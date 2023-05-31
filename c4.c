@@ -1,8 +1,8 @@
-// c4.c - C in four functions
+// c4.c - C in four functions // 用 4 個函數寫出 C 語言
 
-// char, int, and pointer types
-// if, while, return, and expression statements
-// just enough features to allow self-compilation and a bit more
+// char, int, and pointer types // 僅支援字元、整數和指標型別
+// if, while, return, and expression statements // 語法上只支援 if, while, return 和表達式語句
+// just enough features to allow self-compilation and a bit more // 剛好有足夠的功能來進行自編譯和其他事
 
 // Written by Robert Swierczek
 
@@ -13,210 +13,212 @@
 #include <fcntl.h>
 #define int long long
 
-char *p, *lp, // current position in source code
-     *data;   // data/bss pointer
+char *p, *lp, // current position in source code (p: 目前原始碼指標, lp: 上一行原始碼指標)
+     *data;   // data/bss pointer (資料段機器碼指標)
 
-int *e, *le,  // current position in emitted code
-    *id,      // currently parsed identifier
-    *sym,     // symbol table (simple list of identifiers)
-    tk,       // current token
-    ival,     // current token value
-    ty,       // current expression type
-    loc,      // local variable offset
-    line,     // current line number
-    src,      // print source and assembly flag
-    debug;    // print executed instructions
+int *e, *le,  // current position in emitted code (e: 目前機器碼指標, le: 上一行機器碼指標)
+    *id,      // currently parsed identifier (id: 目前的 id)
+    *sym,     // symbol table (simple list of identifiers) (符號表)
+    tk,       // current token (目前 token)
+    ival,     // current token value (目前的 token 值)
+    ty,       // current expression type (目前的運算式型態)
+    loc,      // local variable offset (區域變數的位移)
+    line,     // current line number (目前行號)
+    src,      // print source and assembly flag (印出原始碼)
+    debug;    // print executed instructions (印出執行指令 -- 除錯模式)
 
-// tokens and classes (operators last and in precedence order)
-enum {
+// tokens and classes (operators last and in precedence order) (按優先權順序排列)
+enum { // token : 0-127 直接用該字母表達， 128 以後用代號。
   Num = 128, Fun, Sys, Glo, Loc, Id,
   Char, Else, Enum, If, Int, Return, Sizeof, While,
   Assign, Cond, Lor, Lan, Or, Xor, And, Eq, Ne, Lt, Gt, Le, Ge, Shl, Shr, Add, Sub, Mul, Div, Mod, Inc, Dec, Brak
 };
 
-// opcodes
+// opcodes (操作碼)
 enum { LEA ,IMM ,JMP ,JSR ,BZ  ,BNZ ,ENT ,ADJ ,LEV ,LI  ,LC  ,SI  ,SC  ,PSH ,
        OR  ,XOR ,AND ,EQ  ,NE  ,LT  ,GT  ,LE  ,GE  ,SHL ,SHR ,ADD ,SUB ,MUL ,DIV ,MOD ,
        OPEN,READ,CLOS,PRTF,MALC,FREE,MSET,MCMP,EXIT };
 
-// types
+// types (支援型態，只有 int, char, pointer)
 enum { CHAR, INT, PTR };
 
+// 因為沒有 struct，所以使用 offset 代替，例如 id[Tk] 代表 id.Tk (token), id[Hash] 代表 id.Hash, id[Name] 代表 id.Name, .....
 // identifier offsets (since we can't create an ident struct)
-// Symbol table entry's field indexes, except for `Idsz`.
-// `Hash`: Symbol name's hash value.
-// `Name`: Symbol name's string address.
-// `Class`: Symbol type:
-// - Num: Enum name.
-// - Fun: Function name.
-// - Sys: System call name.
-// - Glo: Global variable name.
-// - Loc: Local variable name.
-// `Type`: Associated value type. e.g. `CHAR`, `INT`.
-// `Val`: Associated value.
-// `HClass`: Backup field for `Class` field.
-// `HType`: Backup field for `Type` field.
-// `HVal`: Backup field for `Val` field.
-// `Idsz`: Symbol table entry size.
+// Symbol table entry's field indexes, except for `Idsz`. // 除了 `Idsz` 之外的符號表條目的字段索引
+// `Hash`: Symbol name's hash value. // 符號名稱的雜湊值
+// `Name`: Symbol name's string address. // 符號名稱的字串位址
+// `Class`: Symbol type: // 符號類型
+// - Num: Enum name. // 列舉名稱
+// - Fun: Function name. // 函數名稱
+// - Sys: System call name. // 系統呼叫名稱
+// - Glo: Global variable name. // 全域變數名稱
+// - Loc: Local variable name. // 區域變數名稱
+// `Type`: Associated value type. e.g. `CHAR`, `INT`. // 關聯值類型 (例: 字元、整數)
+// `Val`: Associated value. // 關聯值
+// `HClass`: Backup field for `Class` field. // `Class` 字段的備用字段
+// `HType`: Backup field for `Type` field. // `Type` 字段的備用字段
+// `HVal`: Backup field for `Val` field. // `Val` 字段的備用字段
+// `Idsz`: Symbol table entry size. // `Idsz` 字段的備用字段
 enum { Tk, Hash, Name, Class, Type, Val, HClass, HType, HVal, Idsz };
 
-// Read token.
-void next()
+// Read token. // 讀取 token
+void next() // 詞彙解析 lexer
 {
   char *pp;
 
-  // Get current character.
-  // While current character is not `\0`.
-  // The source code has been read into source code buffer and ended with `\0`.
+  // Get current character. // 取得當前字元
+  // While current character is not `\0`. // 當當前字元不為空字元
+  // The source code has been read into source code buffer and ended with `\0`. // 源代碼已被讀入其緩衝區, 並以空字元結束
   while (tk = *p) {
-    // Point to next character.
+    // Point to next character. // 指向下一個字元
     ++p;
 
-    // If current character is newline.
+    // If current character is newline. // 如果新字元是換行字元
     if (tk == '\n') {
       // If switch for printing source code line and corresponding instructions
-      // is on.
+      // is on. // 如果有用到 c4 的 -s 參數
       if (src) {
-        // Print source code line.
+        // Print source code line. // 印出源代碼行
         printf("%d: %.*s", line, p - lp, lp);
 
-        // Point `lp` to the last newline.
+        // Point `lp` to the last newline. // 將 `lp` 指向新一行的原始碼開頭
         lp = p;
 
-        // While have instruction to print.
+        // While have instruction to print. // 當有指令要印
         while (le < e) {
-          // Print opcode.
+          // Print opcode. // 印出操作碼
           printf("%8.4s", &"LEA ,IMM ,JMP ,JSR ,BZ  ,BNZ ,ENT ,ADJ ,LEV ,LI  ,LC  ,SI  ,SC  ,PSH ,"
                            "OR  ,XOR ,AND ,EQ  ,NE  ,LT  ,GT  ,LE  ,GE  ,SHL ,SHR ,ADD ,SUB ,MUL ,DIV ,MOD ,"
                            "OPEN,READ,CLOS,PRTF,MALC,FREE,MSET,MCMP,EXIT,"[*++le * 5]);
 
-          // If the opcode <= ADJ, it has operand.
-          // Print operand.
+          // If the opcode <= ADJ, it has operand. // 當操作碼為 LEA、IMM、JMP、JSR、BZ、BNZ、ENT、ADJ 其中之一, 則他有運算元
+          // Print operand. // 印出運算元
           if (*le <= ADJ) printf(" %d\n", *++le); else printf("\n");
         }
       }
 
-      // Increment line number.
+      // Increment line number. // 增加行號
       ++line;
     }
-    // If current character is `#`, it is preprocessing directive.
-    // Preprocessing directive is ignored.
+    // If current character is `#`, it is preprocessing directive. // 如果當前字元為井字號, 則他是預處理指令
+    // Preprocessing directive is ignored. // 預處理指令是被忽略的
     else if (tk == '#') {
       // While current character is not `\0` and current character is not
-      // newline.
-      // Skip current character.
+      // newline. // 當當前字元不是空字元也不是換行字元
+      // Skip current character. // 跳過該字元
       while (*p != 0 && *p != '\n') ++p;
     }
-    // If current character is letter or underscore, it is identifier.
+    // If current character is letter or underscore, it is identifier. // 如果當前字元為字母或下劃線, 則他是一個變數名稱
     else if ((tk >= 'a' && tk <= 'z') || (tk >= 'A' && tk <= 'Z') || tk == '_') {
-      // Point `pp` to the first character.
+      // Point `pp` to the first character. // 將 `pp` 指向第一個字元
       pp = p - 1;
 
-      // While current character is letter, digit, or underscore.
+      // While current character is letter, digit, or underscore. // 當當前字元為字母、數字或下劃線
       while ((*p >= 'a' && *p <= 'z') || (*p >= 'A' && *p <= 'Z') || (*p >= '0' && *p <= '9') || *p == '_')
-        // Use current character to compute hash value.
+        // Use current character to compute hash value. // 使用當前字元來計算雜湊值
         tk = tk * 147 + *p++;
 
-      // Combine the hash value with string length.
+      // Combine the hash value with string length. // 將雜湊值與字串長度結合在一起
       tk = (tk << 6) + (p - pp);
 
-      // Point `id` to symbol table.
+      // Point `id` to symbol table. // 將 `id` 指向符號表
       id = sym;
 
-      // While current symbol table entry is in use.
+      // While current symbol table entry is in use. // 當當前的符號表條目正在使用中
       while (id[Tk]) {
+        // 如果 token 的雜湊值和名稱, 跟當前符號表條目的雜湊值和名稱相等
         // If current symbol table entry's hash is equal and name is equal, it
-        // means the name has been seen before.
-        // Set token type be the entry's token type.
+        // means the name has been seen before. // 則表示該變數名稱已經見過
+        // Set token type be the entry's token type. // 將 token 類型設定為該變數的 token 類型, 然後直接 return
         if (tk == id[Hash] && !memcmp((char *)id[Name], pp, p - pp)) { tk = id[Tk]; return; }
 
-        // Point to next table entry.
+        // Point to next table entry. // 不然就指向下一個符號表條目
         id = id + Idsz;
       }
 
-      // At this point, existing symbol name is not found.
-      // `id` is pointing to the first unused symbol table entry.
+      // At this point, existing symbol name is not found. // 到了這裡, 則表示找不到該變數名稱
+      // `id` is pointing to the first unused symbol table entry. // 將 `id` 指向到第一個未使用的符號表條目
 
-      // Store the name's string address.
+      // Store the name's string address. // 儲存變數名稱的字串位址
       id[Name] = (int)pp;
 
-      // Store the name's hash value.
+      // Store the name's hash value. // 儲存變數名稱的雜湊值
       id[Hash] = tk;
 
-      // Set token type.
+      // Set token type. // 設定 token 類型
       tk = id[Tk] = Id;
 
       return;
     }
-    // If current character is digit, it is number constant.
+    // If current character is digit, it is number constant. // 如果當前字元是數字, 則他是一個常數
     else if (tk >= '0' && tk <= '9') {
-      // If current character is not `0`, it is decimal notation.
-      // Convert decimal notation to value.
+      // If current character is not `0`, it is decimal notation. // 如果當前字元不是 0, 則他是十進位
+      // Convert decimal notation to value. // 將十進位轉換成值
       if (ival = tk - '0') { while (*p >= '0' && *p <= '9') ival = ival * 10 + *p++ - '0'; }
       // If current character is `0` and following character is `x` or
-      // `X`, it is hexadecimal notation.
+      // `X`, it is hexadecimal notation. // 如果當前字元是 0, 且下一個字元是 x, 則他是十六進位
       else if (*p == 'x' || *p == 'X') {
-        // Convert hexadecimal notation to value.
+        // Convert hexadecimal notation to value. // 將十六進位轉換成值
         while ((tk = *++p) && ((tk >= '0' && tk <= '9') || (tk >= 'a' && tk <= 'f') || (tk >= 'A' && tk <= 'F')))
           ival = ival * 16 + (tk & 15) + (tk >= 'A' ? 9 : 0);
       }
-      // If current character is `0` and following character is not `x` or
-      // `X`, it is octal notation.
-      // Convert octal notation to value.
+      // If current character is `0` and following character is not `x` or // 如果當前字元是 0, 且下一個字元不是 x
+      // `X`, it is octal notation. // 則他是八進位
+      // Convert octal notation to value. // 將八進位轉換成值
       else { while (*p >= '0' && *p <= '7') ival = ival * 8 + *p++ - '0'; }
 
-      // Set token type.
+      // Set token type. // 設定 token 類型
       tk = Num;
 
       return;
     }
-    // If current character is `/`, it is comments or division operator.
+    // If current character is `/`, it is comments or division operator. // 如果當前字元是正斜線, 則他是註解或除法運算子
     else if (tk == '/') {
-      // If following character is `/`, it is comments.
+      // If following character is `/`, it is comments. // 如果下一個字元還是正斜線, 則他是註解
       if (*p == '/') {
-        // Point to next character.
+        // Point to next character. // 指向到下一個字元
         ++p;
 
         // While current character is not `\0` and current character is not
-        // newline.
-        // Skip current character.
+        // newline. // 當當前字元不是空字元也不是換行字元
+        // Skip current character. // 跳過當前字元
         while (*p != 0 && *p != '\n') ++p;
       }
-      // If following character is not `/`, it is division operator.
+      // If following character is not `/`, it is division operator. // 如果下一個字元不是正斜線, 則他是除法運算子
       else {
-        // Set token type.
+        // Set token type. // 設定 token 類型
         tk = Div;
 
         return;
       }
     }
-    // If current character is `'` or `"`, it is character constant or string
+    // If current character is `'` or `"`, it is character constant or string // 如果當前字元是引號, 則他是字元或字串
     // constant.
     else if (tk == '\'' || tk == '"') {
-      // Store data buffer's current location.
+      // Store data buffer's current location. // 儲存資料緩衝區的當前位置
       pp = data;
 
       // While current character is not `\0` and current character is not the
-      // quote character.
+      // quote character. // 當當前字元不是空字元且不是引號
       while (*p != 0 && *p != tk) {
         // If current character is `\`, it is escape notation or simply `\`
-        // character.
+        // character. // 如果當前字元是反斜線, 則他是跳脫字元或是單純的反斜線
         if ((ival = *p++) == '\\') {
-          // If following character is `n`, it is newline escape,
+          // If following character is `n`, it is newline escape, // 如果下一個字元是 n, 則他是一個跳脫/換行字元
           if ((ival = *p++) == 'n') ival = '\n';
         }
 
-        // If it is string constant, copy current character to data buffer.
+        // If it is string constant, copy current character to data buffer. // 如果他是一個字串, 就將當前字元複製到資料緩衝區
         if (tk == '"') *data++ = ival;
       }
 
-      // Point to next character.
+      // Point to next character. // 指向下一個字元
       ++p;
 
-      // If it is string constant, use the string's address as the token's
-      // associated value. The token type is `"`.
-      // If it is character constant, use the character's value as the token's
-      // associated value. Set token type be number constant.
+      // If it is string constant, use the string's address as the token's // 如果他是字串
+      // associated value. The token type is `"`. // 就將字串位址作為 token 的關聯值, 並把 token 類型設定為雙引號
+      // If it is character constant, use the character's value as the token's // 如果他是字元
+      // associated value. Set token type be number constant. // 就將字元值作為 token 的關聯值, 並把 token 類型設定為數字
       if (tk == '"') ival = (int)pp; else tk = Num;
 
       return;
