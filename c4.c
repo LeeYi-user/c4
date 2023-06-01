@@ -1,7 +1,7 @@
 // c4.c - C in four functions // 用 4 個函數寫出 C 語言
 
-// char, int, and pointer types // 僅支援字元、整數和指標型別
-// if, while, return, and expression statements // 語法上只支援 if, while, return 和表達式語句
+// char, int, and pointer types // 只支援字元、整數和指標型態
+// if, while, return, and expression statements // 語法上則支援 if, while, return 和表達式語句
 // just enough features to allow self-compilation and a bit more // 剛好有足夠的功能來進行自編譯和其他事
 
 // Written by Robert Swierczek
@@ -53,7 +53,7 @@ enum { CHAR, INT, PTR };
 // - Sys: System call name. // 系統呼叫名稱
 // - Glo: Global variable name. // 全域變數名稱
 // - Loc: Local variable name. // 區域變數名稱
-// `Type`: Associated value type. e.g. `CHAR`, `INT`. // 關聯值類型 (例: 字元、整數)
+// `Type`: Associated value type. e.g. `CHAR`, `INT`. // 關聯值型態 (例: 字元、整數)
 // `Val`: Associated value. // 關聯值
 // `HClass`: Backup field for `Class` field. // `Class` 字段的備用字段
 // `HType`: Backup field for `Type` field. // `Type` 字段的備用字段
@@ -172,7 +172,7 @@ void next() // 詞彙解析 lexer
 
       return;
     }
-    // If current character is `/`, it is comments or division operator. // 如果當前字元是正斜線, 則他是註解或除法運算子
+    // If current character is `/`, it is comments or division operator. // 如果當前字元是正斜線, 則他是註解或除法運算符
     else if (tk == '/') {
       // If following character is `/`, it is comments. // 如果下一個字元還是正斜線, 則他是註解
       if (*p == '/') {
@@ -184,7 +184,7 @@ void next() // 詞彙解析 lexer
         // Skip current character. // 跳過當前字元
         while (*p != 0 && *p != '\n') ++p;
       }
-      // If following character is not `/`, it is division operator. // 如果下一個字元不是正斜線, 則他是除法運算子
+      // If following character is not `/`, it is division operator. // 如果下一個字元不是正斜線, 則他是除法運算符
       else {
         // Set token type. // 設定 token 類型
         tk = Div;
@@ -195,7 +195,7 @@ void next() // 詞彙解析 lexer
     // If current character is `'` or `"`, it is character constant or string // 如果當前字元是引號, 則他是字元或字串
     // constant.
     else if (tk == '\'' || tk == '"') {
-      // Store data buffer's current location. // 儲存資料緩衝區的當前位置
+      // Store data buffer's current location. // 儲存資料段的當前位置
       pp = data;
 
       // While current character is not `\0` and current character is not the
@@ -208,7 +208,7 @@ void next() // 詞彙解析 lexer
           if ((ival = *p++) == 'n') ival = '\n';
         }
 
-        // If it is string constant, copy current character to data buffer. // 如果他是一個字串, 就將當前字元複製到資料緩衝區
+        // If it is string constant, copy current character to data buffer. // 如果他是一個字串, 就將當前字元複製到資料段裡
         if (tk == '"') *data++ = ival;
       }
 
@@ -240,9 +240,9 @@ void next() // 詞彙解析 lexer
   }
 }
 
-// Parse expression.
+// Parse expression. // 運算式 expression, 其中 lev 代表優先等級
 // `lev`: Current operator precedence. Greater value means higher precedence.
-// Operator precedence (lower first):
+// Operator precedence (lower first): // 運算符優先級 (從低到高)
 // Assign  =
 // Cond    ?
 // Lor     ||
@@ -270,187 +270,193 @@ void expr(int lev)
 {
   int t, *d;
 
-  // If current token is input end, print error and exit program.
+  // If current token is input end, print error and exit program. // 如果當前 token 是檔案結尾, 則印出錯誤並退出程序
   if (!tk) { printf("%d: unexpected eof in expression\n", line); exit(-1); }
 
-  // If current token is number constant.
-  // Add `IMM` instruction to load the number's value to register.
-  // Set result value type be `INT`.
+  // If current token is number constant. // 如果當前 token 是數字
+  // Add `IMM` instruction to load the number's value to register. // 添加 `IMM` 指令來將數字的值載入到暫存器中
+  // Set result value type be `INT`. // 將結果值型態設為整數
   else if (tk == Num) { *++e = IMM; *++e = ival; next(); ty = INT; }
-  // If current token is string constant.
+  // If current token is string constant. // 如果當前 token 是字串
   else if (tk == '"') {
-    // Add `IMM` instruction to load the string's address to register.
-    // Read token.
+    // Add `IMM` instruction to load the string's address to register. // 添加 `IMM` 指令來將字串位址載入到暫存器中
+    // Read token. // 讀取 token
     *++e = IMM; *++e = ival; next();
 
     // While current token is string constant, it is adjacent string
-    // constants, e.g. "abc" "def".
-    // In `next`, the string's characters have been copied to data buffer.
-    // This implements concatenation of adjacent string constants.
-    // Read token.
+    // constants, e.g. "abc" "def". // 當當前 token 是字串, 則他是一個相鄰字串 (例: "abc""def")
+    // In `next`, the string's characters have been copied to data buffer. // 在 next() 函數中, 字串中的字元都已經被複製到資料段裡
+    // This implements concatenation of adjacent string constants. // 這裡用來實現相鄰字串的連接
+    // Read token. // 讀取 token
     while (tk == '"') next();
 
-    // Point `data` to next int-aligned address.
-    // E.g. `-sizeof(int)` is -4, i.e. 0b11111100.
+    // Point `data` to next int-aligned address. // 將整數作為大小對齊, 並將 `data` 指向下一個對齊的位址
+    // E.g. `-sizeof(int)` is -4, i.e. 0b11111100. // 例: `-sizeof(int)` 是 -4, 也就是 0b11111100
     // This guarantees to leave at least one '\0' after the string.
-    //
-    // Set result value type be char pointer.
-    // CHAR + PTR = PTR because CHAR is 0.
+    // 這保證在字串後至少留下一個空字元
+    // Set result value type be char pointer. // 將結果值型態設為字元指標
+    // CHAR + PTR = PTR because CHAR is 0. // 因為 CHAR 是 0, 所以 CHAR + PTR 等於 PTR
     data = (char *)((int)data + sizeof(int) & -sizeof(int)); ty = PTR;
   }
-  // If current token is `sizeof` operator.
+  // If current token is `sizeof` operator. // 如果當前 token 是 `sizeof` 運算符
   else if (tk == Sizeof) {
-    // Read token.
-    // If current token is `(`, read token, else print error and exit
-    // program.
+    // Read token. // 讀取token
+    // If current token is `(`, read token, else print error and exit // 如果當前 token 是左括弧, 讀取 token
+    // program. // 否則印出錯誤並退出程序
     next(); if (tk == '(') next(); else { printf("%d: open paren expected in sizeof\n", line); exit(-1); }
 
-    // Set operand value type be `INT`.
-    // If current token is `int`, read token.
-    // If current token is `char`, read token, set operand value type be
-    // `CHAR`.
+    // Set operand value type be `INT`. // 將運算元型態設為整數
+    // If current token is `int`, read token. // 如果當前 token 是 `int`, 讀取 token
+    // If current token is `char`, read token, set operand value type be // 如果當前 token 是 `char`, 讀取 token
+    // `CHAR`. // 然後將運算元型態設為字元
     ty = INT; if (tk == Int) next(); else if (tk == Char) { next(); ty = CHAR; }
 
-    // While current token is `*`, it is pointer type.
-    // Add `PTR` to the operand value type.
+    // While current token is `*`, it is pointer type. // 如果當前 token 是星號, 則他是指標型態
+    // Add `PTR` to the operand value type. // 添加 `PTR` 到運算元型態
     while (tk == Mul) { next(); ty = ty + PTR; }
 
-    // If current token is `)`, read token, else print error and exit program.
+    // If current token is `)`, read token, else print error and exit program. // 如果當前 token 是右括弧, 讀取 token
+    // 否則印出錯誤並退出程序
     if (tk == ')') next(); else { printf("%d: close paren expected in sizeof\n", line); exit(-1); }
 
-    // Add `IMM` instruction to load the operand value's size to register.
+    // Add `IMM` instruction to load the operand value's size to register. // 添加 `IMM` 指令來將運算元大小載入到暫存器中
     *++e = IMM; *++e = (ty == CHAR) ? sizeof(char) : sizeof(int);
 
-    // Set result value type be `INT`.
+    // Set result value type be `INT`. // 將結果值型態設為整數
     ty = INT;
   }
-  // If current token is identifier.
+  // If current token is identifier. // 如果當前 token 是變數名稱
   else if (tk == Id) {
-    // Store the identifier's symbol table entry address.
-    // Read token.
+    // Store the identifier's symbol table entry address. // 儲存該變數名稱的符號表條目位址
+    // Read token. // 讀取 token
     d = id; next();
 
-    // If current token is `(`, it is function call.
+    // If current token is `(`, it is function call. // 如果當前 token 是左括弧, 他就是函數呼叫
     if (tk == '(') {
-      // Read token.
+      // Read token. // 讀取 token
       next();
 
-      // Arguments count.
+      // Arguments count. // 參數數量
       t = 0;
 
-      // While current token is not `)`.
-      // Parse argument expression.
-      // Add `PSH` instruction to push the argument to stack.
-      // Increment arguments count.
-      // If current token is `,`, skip.
+      // While current token is not `)`. // 當當前 token 不是右括弧
+      // Parse argument expression. // 解析參數表達式
+      // Add `PSH` instruction to push the argument to stack. // 添加 `PSH` 指令來將參數推進堆疊
+      // Increment arguments count. // 增加參數計數
+      // If current token is `,`, skip. // 如我當前 token 是逗號, 就跳過
       while (tk != ')') { expr(Assign); *++e = PSH; ++t; if (tk == ',') next(); }
 
-      // Skip `)`
+      // Skip `)` // 跳過右括弧
       next();
 
-      // If it is system call,
-      // add the system call's opcode to instruction buffer.
+      // If it is system call, // 如果他是系統呼叫
+      // add the system call's opcode to instruction buffer. // 添加系統呼叫的操作碼到指令緩衝區
       if (d[Class] == Sys) *++e = d[Val];
-      // If it is function call,
-      // add `JSR` opcode and the function address to instruction buffer.
+      // If it is function call, // 如果他是函數呼叫
+      // add `JSR` opcode and the function address to instruction buffer. // 添加 `JSR` 操作碼和函數位址到指令緩衝區
       else if (d[Class] == Fun) { *++e = JSR; *++e = d[Val]; }
-      // Else print error message and exit program.
+      // Else print error message and exit program. // 否則印出錯誤訊息並退出程序
       else { printf("%d: bad function call\n", line); exit(-1); }
 
-      // If have arguments.
-      // Add `ADJ` instruction and arguments count to instruction buffer to
-      // pop arguments off stack after returning from function call.
+      // If have arguments. // 如果有參數
+      // Add `ADJ` instruction and arguments count to instruction buffer to // 添加 `ADJ` 指令和參數計數到指令緩衝區
+      // pop arguments off stack after returning from function call. // 以便在從函數呼叫返回後將參數從堆疊中彈出
       if (t) { *++e = ADJ; *++e = t; }
 
-      // Set result value type be the system call or function's return type.
+      // Set result value type be the system call or function's return type. // 將結果值型態設為系統呼叫或函數的回傳型態
       ty = d[Type];
     }
-    // If it is enum name.
-    // Add `IMM` instruction to load the enum value to register.
-    // Set result value type be `INT`.
+    // If it is enum name. // 如果他是 enum 名稱
+    // Add `IMM` instruction to load the enum value to register. // 添加 `IMM` 指令來將 enum 值載入到暫存器中
+    // Set result value type be `INT`. // 將結果值型態設定為整數
     else if (d[Class] == Num) { *++e = IMM; *++e = d[Val]; ty = INT; }
-    // If it is none of above, assume it is a variable name.
+    // If it is none of above, assume it is a variable name. // 如果他不是上述情況, 假設他是一個變數名稱
     else {
-      // 6S71X
-      // If it is local variable, add `LEA` opcode and the local variable's
-      // offset to instruction buffer to load the local variable's address to
-      // register.
+      // 6S71X // 這裡是原作者用來記錄位置的代碼, 不要上網查他...
+      // If it is local variable, add `LEA` opcode and the local variable's // 如果他是區域變數, 則添加 `LEA` 指令
+      // offset to instruction buffer to load the local variable's address to // 和從區域變數到指令緩衝區的偏移量
+      // register. // 來將區域變數位址載入到暫存器
       if (d[Class] == Loc) { *++e = LEA; *++e = loc - d[Val]; }
-      // If it is global variable, add `IMM` instruction to load the global
-      // variable's address to register.
+      // If it is global variable, add `IMM` instruction to load the global // 如果他是全域變數, 則添加 `IMM` 指令
+      // variable's address to register. // 來將全域變數位址載入到暫存器
       else if (d[Class] == Glo) { *++e = IMM; *++e = d[Val]; }
-      // Else print error message and exit program.
+      // Else print error message and exit program. // 否則印出錯誤訊息並退出程序
       else { printf("%d: undefined variable\n", line); exit(-1); }
 
-      // 2WQE9
+      // 2WQE9 // 這裡是原作者用來記錄位置的代碼, 不要上網查他...
       // Add `LC`/`LI` instruction to load the value on the address in register
-      // to register.
+      // to register. // 添加 `LC`/`LI` 指令來將暫存器中的位址所指向的值載入到暫存器
       *++e = ((ty = d[Type]) == CHAR) ? LC : LI;
     }
   }
+  // 如果當前 token 是左括弧, 則他是括弧中的強制轉換或表達式
   // If current token is `(`, it is cast or expression in parentheses.
   else if (tk == '(') {
-    // Read token.
+    // Read token. // 讀取 token
     next();
 
-    // If current token is `int` or `char`, it is cast.
+    // If current token is `int` or `char`, it is cast. // 如果當前 token 是 `int` 或 `char`, 則他是強制轉換
     if (tk == Int || tk == Char) {
-      // Get the cast's base data type.
-      // Read token.
+      // Get the cast's base data type. // 取得強制轉換的基本資料型態
+      // Read token. // 讀取 token
       t = (tk == Int) ? INT : CHAR; next();
 
-      // While current token is `*`, it is pointer type.
-      // Add `PTR` to the cast's data type.
+      // While current token is `*`, it is pointer type. // 如果當前 token 是星號, 則他是指標型態
+      // Add `PTR` to the cast's data type. // 添加 `PRT` 到強制轉換的資料型態
       while (tk == Mul) { next(); t = t + PTR; }
 
-      // If current token is not `)`, print error and exit program.
+      // If current token is not `)`, print error and exit program. // 如果當前 token 不是右括弧, 印出錯誤並退出程序
       if (tk == ')') next(); else { printf("%d: bad cast\n", line); exit(-1); }
 
-      // Parse casted expression.
+      // Parse casted expression. // 解析強制轉換表達式
       // Use `Inc` to allow only `++`, `--`, `[]` operators in the expression.
-      expr(Inc);
+      expr(Inc); // 在表達式中使用 `Inc` 以限制只能使用 `++`, `--`, `[]` 運算符
 
-      // Set result value type be the cast's data type.
+      // Set result value type be the cast's data type. // 將結果值型態設為強制轉換的資料型態
       ty = t;
     }
     // If current token is not `int` or `char`, it is expression in
-    // parentheses.
+    // parentheses. // 如果當前 token 不是 `int` 或 `char`, 則他是括弧中的表達式
     else {
-      // Parse expression.
+      // Parse expression. // 解析表達式
       expr(Assign);
 
-      // If current token is not `)`, print error and exit program.
+      // If current token is not `)`, print error and exit program. // 如果當前 token 不是右括弧, 印出錯誤並退出程序
       if (tk == ')') next(); else { printf("%d: close paren expected\n", line); exit(-1); }
     }
   }
-  // If current token is `*`, it is dereference operator.
+  // If current token is `*`, it is dereference operator. // 如果當前 token 是星號, 則他是解引用運算符
   else if (tk == Mul) {
-    // Read token.
-    // Parse operand expression.
+    // Read token. // 讀取 token
+    // Parse operand expression. // 解析運算元表達式
     // Use `Inc` to allow only `++`, `--`, `[]` operators in the expression.
-    next(); expr(Inc);
+    next(); expr(Inc); // 在表達式中使用 `Inc` 以限制只能使用 `++`, `--`, `[]` 運算符
 
     // If operand value type is not pointer, print error and exit program.
+    // 如果運算元型態不是指標, 則印出錯誤並退出程序
     if (ty > INT) ty = ty - PTR; else { printf("%d: bad dereference\n", line); exit(-1); }
 
     // Add `LC`/`LI` instruction to load the value on the address in register
-    // to register.
+    // to register. // 添加 `LC`/`LI` 指令來將暫存器中的位址所指向的值載入到暫存器
     *++e = (ty == CHAR) ? LC : LI;
   }
-  // If current token is `&`, it is address-of operator.
+  // If current token is `&`, it is address-of operator. // 如果當前 token 是 and 號, 則他是傳址運算符
   else if (tk == And) {
-    // Read token.
-    // Parse operand expression.
+    // Read token. // 讀取 token
+    // Parse operand expression. // 解析運算元表達式
     // Use `Inc` to allow only `++`, `--`, `[]` operators in the expression.
-    next(); expr(Inc);
+    next(); expr(Inc); // 在表達式中使用 `Inc` 以限制只能使用 `++`, `--`, `[]` 運算符
 
     // The operand of the address-of operator should be a variable.
+    // 傳址運算符的運算元應該是一個變數
     // The instructions to get the variable's address has been added at 6S71X.
+    // 用來獲取變數位址的指令已經被添加到 6S71X 這個位置
     // Only need to remove the `LC`/`LI` instruction added at 2WQE9.
+    // 只需要去掉在 2WQE9 處添加的 `LC`/`LI` 指令即可
     // If current instruction is `LC`/`LI`, remove it, else print error and
-    // exit program.
+    // exit program. // 如果當前指令是 `LC`/`LI`, 移除他, 否則印出錯誤並退出程序
     if (*e == LC || *e == LI) --e; else { printf("%d: bad address-of\n", line); exit(-1); }
-
+    // 將結果值型態設為指向當前值型態的指標
     // Set result value type be pointer to current value type.
     ty = ty + PTR;
   }
