@@ -460,77 +460,90 @@ void expr(int lev)
     // Set result value type be pointer to current value type.
     ty = ty + PTR;
   }
-  // If current token is `!`, it is boolean negation operator.
+  // If current token is `!`, it is boolean negation operator. // 如果當前 token 是驚嘆號, 則他是布林運算符
   // Add instructions to compute `x == 0` because `!x` is equivalent to
-  // `x == 0`.
-  // Set result value type be `INT`.
+  // `x == 0`. // 添加指令以計算 `x == 0`, 因為 `!x` 等價於 `x == 0`
+  // Set result value type be `INT`. // 將結果值型態設為整數
   else if (tk == '!') { next(); expr(Inc); *++e = PSH; *++e = IMM; *++e = 0; *++e = EQ; ty = INT; }
-  // If current token is `~`, it is bitwise inversion operator.
+  // If current token is `~`, it is bitwise inversion operator. // 如果當前 token 是波浪號, 則他是位元反轉運算符
   // Add instructions to compute `x ^ -1` because `~x` is equivalent to
-  // `x ^ -1`.
-  // Set result value type be `INT`.
+  // `x ^ -1`. // 添加指令以計算 `x ^ -1`, 因為 `~x` 等價於 `x ^ -1`
+  // Set result value type be `INT`. // 將結果值型態設為整數
   else if (tk == '~') { next(); expr(Inc); *++e = PSH; *++e = IMM; *++e = -1; *++e = XOR; ty = INT; }
-  // If current token is `+`, it is unary addition operator.
-  // Read token.
-  // Parse operand expression.
-  // Set result value type be `INT`.
+  // If current token is `+`, it is unary addition operator. // 如果當前 token 是加號, 則他是一元加法運算符
+  // Read token. // 讀取 token
+  // Parse operand expression. // 解析運算元表達式
+  // Set result value type be `INT`. // 將結果值型態設為整數
   else if (tk == Add) { next(); expr(Inc); ty = INT; }
-  // If current token is `-`, it is unary subtraction operator.
+  // If current token is `-`, it is unary subtraction operator. // 如果當前 token 是減號, 則他是一元減法運算符
   else if (tk == Sub) {
-    // Read token.
+    // Read token. // 讀取 token
     // Add `IMM` instruction to load number constant's negated value or `-1`
-    // to register.
+    // to register. // 添加 `IMM` 指令來將數字的負值或 `-1` 載入到暫存器
     next(); *++e = IMM;
 
     // If operand is number constant, add negated value to instruction buffer.
+    // 如果運算元是數字, 則將負值添加到指令緩衝區
     // If operand is not number constant, add `-1` to instruction buffer. Add
+    // 如果運算元不是數字, 則將 `-1` 添加到指令緩衝區
     // `PSH` instruction to push `-1` in register to stack. Parse operand
+    // 然後再添加 `PSH` 指令將 `-1` 推進堆疊
     // expression. Add `MUL` instruction to multiply `-1` on stack by the
+    // 最後再解析運算元表達式, 添加 `MUL` 指令來將堆疊中的 `-1` 乘以暫存器中的運算元
     // operand value in register.
     if (tk == Num) { *++e = -ival; next(); } else { *++e = -1; *++e = PSH; expr(Inc); *++e = MUL; }
 
-    // Set result value type be `INT`.
+    // Set result value type be `INT`. // 將結果值型態設為整數
     ty = INT;
   }
+  // 如果當前 token 是前置遞增或遞減運算符
   // If current token is prefix increment or decrement operator.
   else if (tk == Inc || tk == Dec) {
-    // Store current token type.
-    // Read token.
-    // Parse operand expression.
+    // Store current token type. // 儲存當前 token 類型
+    // Read token. // 讀取 token
+    // Parse operand expression. // 解析運算元表達式
     t = tk; next(); expr(Inc);
 
     // If current instruction is `LC`, insert a `PSH` instruction before `LC`
+    // 如果當前指令是 `LC`, 在 `LC` 之前插入一個 `PSH` 指令
     // to push variable address in register to stack for use by the `SC`
+    // 來將暫存器中的變數位址推進堆疊, 供下面添加的 `SC` 指令使用
     // instruction added below.
     if (*e == LC) { *e = PSH; *++e = LC; }
     // If current instruction is `LI`, insert a `PSH` instruction before `LI`
+    // 如果當前指令是 `LI`, 在 `LI` 之前插入一個 `PSH` 指令
     // to push variable address in register to stack for use by the `SI`
+    // 來將暫存器中的變數位址推進堆疊, 供下面添加的 `SI` 指令使用
     // instruction added below.
     else if (*e == LI) { *e = PSH; *++e = LI; }
-    // Else print error and exit program.
+    // Else print error and exit program. // 否則印出錯誤並退出程序
     else { printf("%d: bad lvalue in pre-increment\n", line); exit(-1); }
 
     // Add `PSH` instruction to push operand value in register to stack
+    // 添加 `PSH` 指令來將暫存器中的運算元推進堆疊
     // for use by the `ADD`/`SUB` instruction added below.
+    // 供下面添加的 `ADD`/`SUB` 指令使用
     *++e = PSH;
 
     // Add `IMM` instruction to load increment/decrement value to register.
+    // 添加 `IMM` 指令來將遞增/遞減值載入到暫存器
     *++e = IMM; *++e = (ty > PTR) ? sizeof(int) : sizeof(char);
 
     // Add `ADD`/`SUB` instruction to compute result value.
+    // 添加 `ADD`/`SUB` 指令來計算結果值
     *++e = (t == Inc) ? ADD : SUB;
 
     // Add `SC`/`SI` instruction to save result value in register to address
-    // held on stack.
+    // held on stack. // 添加 `SC`/`SI` 指令來將暫存器中的結果值保存到堆疊中的地址
     *++e = (ty == CHAR) ? SC : SI;
   }
-  // Else print error and exit program.
+  // Else print error and exit program. // 否則印出錯誤並退出程序
   else { printf("%d: bad expression\n", line); exit(-1); }
 
-  // While current token type is >= current operator precedence,
-  // it is an operator that should be handled here.
-  while (tk >= lev) { // "precedence climbing" or "Top Down Operator Precedence" method
-    // Store current value type.
+  // While current token type is >= current operator precedence, // 當當前 token 類型大於等於當前運算符優先級
+  // it is an operator that should be handled here. // 則他是一個應該在這裡處理的運算符
+  while (tk >= lev) { // "precedence climbing" or "Top Down Operator Precedence" method // 遞迴下降運算符優先級解析器
+    // Store current value type. // 儲存當前值類型
     t = ty;
 
     // If current token is assignment operator.
