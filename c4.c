@@ -301,7 +301,7 @@ void expr(int lev)
   // If current token is `sizeof` operator. // 如果當前 token 是 `sizeof` 運算符
   else if (tk == Sizeof) {
     // Read token. // 讀取token
-    // If current token is `(`, read token, else print error and exit // 如果當前 token 是左括弧, 讀取 token
+    // If current token is `(`, read token, else print error and exit // 如果當前 token 是左圓括號, 讀取 token
     // program. // 否則印出錯誤並退出程序
     next(); if (tk == '(') next(); else { printf("%d: open paren expected in sizeof\n", line); exit(-1); }
 
@@ -315,7 +315,7 @@ void expr(int lev)
     // Add `PTR` to the operand value type. // 添加 `PTR` 到運算元型態
     while (tk == Mul) { next(); ty = ty + PTR; }
 
-    // If current token is `)`, read token, else print error and exit program. // 如果當前 token 是右括弧, 讀取 token
+    // If current token is `)`, read token, else print error and exit program. // 如果當前 token 是右圓括號, 讀取 token
     // 否則印出錯誤並退出程序
     if (tk == ')') next(); else { printf("%d: close paren expected in sizeof\n", line); exit(-1); }
 
@@ -331,7 +331,7 @@ void expr(int lev)
     // Read token. // 讀取 token
     d = id; next();
 
-    // If current token is `(`, it is function call. // 如果當前 token 是左括弧, 他就是函數呼叫
+    // If current token is `(`, it is function call. // 如果當前 token 是左圓括號, 他就是函數呼叫
     if (tk == '(') {
       // Read token. // 讀取 token
       next();
@@ -339,14 +339,14 @@ void expr(int lev)
       // Arguments count. // 參數數量
       t = 0;
 
-      // While current token is not `)`. // 當當前 token 不是右括弧
+      // While current token is not `)`. // 當當前 token 不是右圓括號
       // Parse argument expression. // 解析參數表達式
       // Add `PSH` instruction to push the argument to stack. // 添加 `PSH` 指令來將參數推進堆疊
       // Increment arguments count. // 增加參數計數
       // If current token is `,`, skip. // 如我當前 token 是逗號, 就跳過
       while (tk != ')') { expr(Assign); *++e = PSH; ++t; if (tk == ',') next(); }
 
-      // Skip `)` // 跳過右括弧
+      // Skip `)` // 跳過右圓括號
       next();
 
       // If it is system call, // 如果他是系統呼叫
@@ -389,7 +389,7 @@ void expr(int lev)
       *++e = ((ty = d[Type]) == CHAR) ? LC : LI;
     }
   }
-  // 如果當前 token 是左括弧, 則他是括弧中的強制轉換或表達式
+  // 如果當前 token 是左圓括號, 則他是圓括號中的強制轉換或表達式
   // If current token is `(`, it is cast or expression in parentheses.
   else if (tk == '(') {
     // Read token. // 讀取 token
@@ -405,7 +405,7 @@ void expr(int lev)
       // Add `PTR` to the cast's data type. // 添加 `PRT` 到強制轉換的資料型態
       while (tk == Mul) { next(); t = t + PTR; }
 
-      // If current token is not `)`, print error and exit program. // 如果當前 token 不是右括弧, 印出錯誤並退出程序
+      // If current token is not `)`, print error and exit program. // 如果當前 token 不是右圓括號, 印出錯誤並退出程序
       if (tk == ')') next(); else { printf("%d: bad cast\n", line); exit(-1); }
 
       // Parse casted expression. // 解析強制轉換表達式
@@ -416,12 +416,12 @@ void expr(int lev)
       ty = t;
     }
     // If current token is not `int` or `char`, it is expression in
-    // parentheses. // 如果當前 token 不是 `int` 或 `char`, 則他是括弧中的表達式
+    // parentheses. // 如果當前 token 不是 `int` 或 `char`, 則他是圓括號中的表達式
     else {
       // Parse expression. // 解析表達式
       expr(Assign);
 
-      // If current token is not `)`, print error and exit program. // 如果當前 token 不是右括弧, 印出錯誤並退出程序
+      // If current token is not `)`, print error and exit program. // 如果當前 token 不是右圓括號, 印出錯誤並退出程序
       if (tk == ')') next(); else { printf("%d: close paren expected\n", line); exit(-1); }
     }
   }
@@ -534,7 +534,7 @@ void expr(int lev)
     *++e = (t == Inc) ? ADD : SUB;
 
     // Add `SC`/`SI` instruction to save result value in register to address
-    // held on stack. // 添加 `SC`/`SI` 指令來將暫存器中的結果值保存到堆疊中的地址
+    // held on stack. // 添加 `SC`/`SI` 指令來將暫存器中的結果值保存到堆疊中的位址
     *++e = (ty == CHAR) ? SC : SI;
   }
   // Else print error and exit program. // 否則印出錯誤並退出程序
@@ -546,80 +546,90 @@ void expr(int lev)
     // Store current value type. // 儲存當前值類型
     t = ty;
 
-    // If current token is assignment operator.
+    // If current token is assignment operator. // 如果當前 token 是賦值運算符 
     if (tk == Assign) {
-      // Read token.
+      // Read token. // 讀取 token
       next();
 
       // If current instruction is `LC`/`LI`, current value in register is
+      // 如果當前指令是 `LC`/`LI`, 則暫存器中的當前值是變數位址
       // variable address, replace current instruction with `PSH` instruction
+      // 將當前指令替換為 `PSH` 指令來將變數位址推進堆疊
       // to push the variable address to stack for use by the `SC`/`SI`
-      // instruction added below.
+      // instruction added below. // 供下面添加的 `SC`/`SI` 指令使用
       // If current instruction is not `LC`/`LI`, current value in register is
+      // 如果當前指令不是 `LC`/`LI`, 則暫存器中的當前值不是變數位址
       // not variable address, print error and exit program.
+      // 印出錯誤並退出程序
       if (*e == LC || *e == LI) *e = PSH; else { printf("%d: bad lvalue in assignment\n", line); exit(-1); }
 
-      // Parse RHS expression.
+      // Parse RHS expression. // 解析 RHS 表達式
       // Add `SC`/`SI` instruction to save value in register to variable
-      // address held on stack.
+      // address held on stack. // 添加 `SC`/`SI` 指令來將暫存器中的值保存到堆疊中的變數位址
       expr(Assign); *++e = ((ty = t) == CHAR) ? SC : SI;
     }
-    // If current token is conditional operator.
+    // If current token is conditional operator. // 如果當前 token 是條件運算符
     else if (tk == Cond) {
-      // Read token.
+      // Read token. // 讀取 token
       next();
 
-      // Add jump-if-zero instruction `BZ` to jump to false branch.
-      // Point `d` to the jump address field to be patched later.
+      // Add jump-if-zero instruction `BZ` to jump to false branch. // 添加條件跳轉指令 `BZ` 用來跳轉到假分支
+      // Point `d` to the jump address field to be patched later. // 將 `d` 指向稍後需要修補的跳轉位址字段
       *++e = BZ; d = ++e;
 
-      // Parse true branch's expression.
+      // Parse true branch's expression. // 解析真分支的表達式
       expr(Assign);
 
-      // If current token is not `:`, print error and exit program.
+      // If current token is not `:`, print error and exit program. // 如果當前 token 不是冒號, 則印出錯誤並退出程序
       if (tk == ':') next(); else { printf("%d: conditional missing colon\n", line); exit(-1); }
 
       // Patch the jump address field pointed to by `d` to hold the address of
-      // false branch.
+      // false branch. // 修補 `d` 指向的跳轉位址字段以保存錯誤分支的位址
       // `+ 3` counts the `JMP` instruction added below.
-      //
+      // 加 3 計算下面添加的 `JMP` 指令
       // Add `JMP` instruction after the true branch to jump over the false
-      // branch.
+      // branch. // 在真分支後面添加 `JMP` 指令, 跳過假分支
       // Point `d` to the jump address field to be patched later.
+      // 將 `d` 指向稍後需要修補的跳轉位址字段
       *d = (int)(e + 3); *++e = JMP; d = ++e;
 
-      // Parse false branch's expression.
+      // Parse false branch's expression. // 解析假分支的表達式
       expr(Cond);
 
       // Patch the jump address field pointed to by `d` to hold the address
-      // past the false branch.
+      // past the false branch. // 修補 `d` 指向的跳轉位址字段以保存經過錯誤分支的位址
       *d = (int)(e + 1);
     }
-    // If current token is logical OR operator.
-    // Read token.
+    // If current token is logical OR operator. // 如果當前 token 是邏輯或運算符
+    // Read token. // 讀取 token
     // Add jump-if-nonzero instruction `BNZ` to implement short circuit.
+    // 添加條件跳轉指令 `BNZ` 以實現短路運算
     // Point `d` to the jump address field to be patched later.
-    // Parse RHS expression.
+    // 將 `d` 指向稍後需要修補的跳轉位址字段
+    // Parse RHS expression. // 解析 RHS 表達式
     // Patch the jump address field pointed to by `d` to hold the address past
-    // the RHS expression.
-    // Set result value type be `INT`.
+    // the RHS expression. // 修補 `d` 指向的跳轉位址字段以保存經過 RHS 表達式的位址
+    // Set result value type be `INT`. // 將結果值型態設為整數
     else if (tk == Lor) { next(); *++e = BNZ; d = ++e; expr(Lan); *d = (int)(e + 1); ty = INT; }
-    // If current token is logical AND operator.
-    // Read token.
+    // If current token is logical AND operator. // 如果當前 token 是邏輯與運算符
+    // Read token. // 讀取 token
     // Add jump-if-zero instruction `BZ` to implement short circuit.
+    // 添加條件跳轉指令 `BZ` 以實現短路運算
     // Point `d` to the jump address field to be patched later.
-    // Parse RHS expression.
+    // 將 `d` 指向稍後需要修補的跳轉位址字段
+    // Parse RHS expression. // 解析 RHS 表達式
     // Patch the jump address field pointed to by `d` to hold the address past
-    // the RHS expression.
-    // Set result value type be `INT`.
+    // the RHS expression. // 修補 `d` 指向的跳轉位址字段以保存經過 RHS 表達式的位址
+    // Set result value type be `INT`. // 將結果值型態設為整數
     else if (tk == Lan) { next(); *++e = BZ;  d = ++e; expr(Or);  *d = (int)(e + 1); ty = INT; }
-    // If current token is bitwise OR operator.
-    // Read token.
+    // If current token is bitwise OR operator. // 如果當前 token 是位元或運算符
+    // Read token. // 讀取 token
     // Add `PSH` instruction to push LHS value in register to stack.
-    // Parse RHS expression.
-    // Add `OR` instruction to compute the result.
-    // Set result value type be `INT`.
-    // The following operators are similar.
+    // 添加 `PSH` 指令來將暫存器中的 LHS 值推進堆疊
+    // Parse RHS expression. // 解析 RHS 表達式
+    // Add `OR` instruction to compute the result. // 添加 `OR` 指令來計算結果
+    // Set result value type be `INT`. // 將結果值型態設為整數
+    // The following operators are similar. // 下面的運算符也類似這樣
     else if (tk == Or)  { next(); *++e = PSH; expr(Xor); *++e = OR;  ty = INT; }
     else if (tk == Xor) { next(); *++e = PSH; expr(And); *++e = XOR; ty = INT; }
     else if (tk == And) { next(); *++e = PSH; expr(Eq);  *++e = AND; ty = INT; }
@@ -631,130 +641,164 @@ void expr(int lev)
     else if (tk == Ge)  { next(); *++e = PSH; expr(Shl); *++e = GE;  ty = INT; }
     else if (tk == Shl) { next(); *++e = PSH; expr(Add); *++e = SHL; ty = INT; }
     else if (tk == Shr) { next(); *++e = PSH; expr(Add); *++e = SHR; ty = INT; }
-    // If current token is addition operator.
+    // If current token is addition operator. // 如果當前 token 是加法運算符
     else if (tk == Add) {
-      // Read token.
+      // Read token. // 讀取 token
       // Add `PSH` instruction to push LHS value in register to stack.
-      // Parse RHS expression.
+      // 添加 `PSH` 指令來將暫存器中的 LHS 值推進堆疊
+      // Parse RHS expression. // 解析 RHS 表達式
       next(); *++e = PSH; expr(Mul);
 
-      // If LHS value type is pointer,
+      // If LHS value type is pointer, // 如果 LHS 值型態是指標
       // the RHS value should be multiplied by int size to get address offset.
+      // 則 RHS 值應該乘以整數大小來獲得位址偏移量
       // Add `PSH` instruction to push RHS value in register to stack.
+      // 添加 `PSH` 指令來將暫存器中的 RHS 值推進堆疊
       // Add `IMM` instruction to load int size to register.
+      // 添加 `IMM` 指令來將整數大小載入到暫存器
       // Add `MUL` instruction to multiply RHS value on stack by int size in
-      // register to get the address offset.
+      // register to get the address offset. // 添加 `MUL` 指令來將堆疊中的 RHS 值乘以暫存器中的整數大小, 以獲得位址偏移量
       if ((ty = t) > PTR) { *++e = PSH; *++e = IMM; *++e = sizeof(int); *++e = MUL;  }
 
       // Add addition instruction to add LHS value on stack to RHS value in
-      // register.
+      // register. // 添加加法指令來將堆疊中的 LHS 值加上暫存器中的 RHS 值
       *++e = ADD;
     }
-    // If current token is subtraction operator.
+    // If current token is subtraction operator. // 如果當前 token 是減法運算符
     else if (tk == Sub) {
-      // Read token.
+      // Read token. // 讀取 token
       // Add `PSH` instruction to push LHS value in register to stack.
-      // Parse RHS expression.
+      // 添加 `PSH` 指令來將暫存器中的 LHS 值推進堆疊
+      // Parse RHS expression. // 解析 RHS 表達式
       next(); *++e = PSH; expr(Mul);
       // If LHS value type is pointer and RHS value type is pointer,
+      // 如果 LHS 值型態是指標且 RHS 值型態是指標
       // the subtraction result should be divided by int size to get int-size
-      // difference.
+      // difference. // 則減法的結果應該除以整數大小以獲得整數大小的差異
       // Add `SUB` instruction to subtract LHS value on stack by RHS value in
-      // register.
+      // register. // 添加 `SUB` 指令來將堆疊中的 `LHS` 值減去暫存器中的 `RHS` 值
       // Add `PSH` instruction to push the address difference in register to
-      // stack.
+      // stack. // 添加 `PSH` 指令來將暫存器中的位址差異推進堆疊
       // Add `IMM` instruction to load int size to register.
+      // 添加 `IMM` 指令來將整數大小載入到暫存器
       // Add `DIV` instruction to divide the address difference on stack by the
       // int size in register to get int-size difference.
+      // 添加 `DIV` 指令來將堆疊中的位址差異除以暫存器中的整數大小, 以獲得整數大小的差異
       if (t > PTR && t == ty) { *++e = SUB; *++e = PSH; *++e = IMM; *++e = sizeof(int); *++e = DIV; ty = INT; }
       // If LHS value type is pointer and RHS value type is not pointer,
+      // 如果 LHS 值型態不是指標且 RHS 值型態不是指標
       // the RHS value should be multiplied by int size to get address offset.
+      // 則 RHS 值應該乘以整數大小以獲得位址偏移量
       // Add `PSH` instruction to push LHS value in register to stack.
+      // 添加 `PSH` 指令來將暫存器中的 LHS 值推進堆疊
       // Add `IMM` instruction to load int size to register.
+      // 添加 `IMM` 指令來將整數大小載入到暫存器
       // Add `MUL` instruction to multiply RHS value on stack by int size in
-      // register to get the address offset.
+      // register to get the address offset. // 添加 `MUL` 指令來將堆疊中的 RHS 值乘以暫存器中的整數大小, 以獲得位址偏移量
       // Add 'SUB' instruction to subtract LHS value on stack by the address
-      // offset in register.
+      // offset in register. // 添加 `SUB` 指令來將堆疊中的 LHS 值減去暫存器中的位址偏移量
       else if ((ty = t) > PTR) { *++e = PSH; *++e = IMM; *++e = sizeof(int); *++e = MUL; *++e = SUB; }
-      // If LHS value type is not pointer.
+      // If LHS value type is not pointer. // 如果 LHS 值型態不是指標
       // Add `SUB` instruction to subtract LHS value on stack by RHS value in
-      // register.
+      // register. // 添加 `SUB` 指令來將堆疊中的 `LHS` 值減去暫存器中的 `RHS` 值
       else *++e = SUB;
     }
-    // If current token is multiplication operator.
+    // If current token is multiplication operator. // 如果當前 token 是乘法運算符
     // Add `PSH` instruction to push LHS value in register to stack.
-    // Parse RHS expression.
+    // 添加 `PSH` 指令來將暫存器中的 LHS 值推進堆疊
+    // Parse RHS expression. // 解析 RHS 表達式
     // Add `MUL` instruction to multiply LHS value on stack by RHS value in
-    // register.
-    // Set result value type be `INT`.
-    // The following operators are similar.
+    // register. // 添加 `MUL` 指令來將堆疊中的 `LHS` 值乘以暫存器中的 `RHS` 值
+    // Set result value type be `INT`. // 將結果值型態設為整數
+    // The following operators are similar. // 下面的運算符也類似這樣
     else if (tk == Mul) { next(); *++e = PSH; expr(Inc); *++e = MUL; ty = INT; }
     else if (tk == Div) { next(); *++e = PSH; expr(Inc); *++e = DIV; ty = INT; }
     else if (tk == Mod) { next(); *++e = PSH; expr(Inc); *++e = MOD; ty = INT; }
     // If current token is postfix increment or decrement operator.
+    // 如果當前 token 是後置遞增或遞減運算符
     else if (tk == Inc || tk == Dec) {
       // If current instruction is `LC`, insert a `PSH` instruction before `LC`
+      // 如果當前指令是 `LC`, 在 `LC` 之前插入一個 `PSH` 指令
       // to push variable address in register to stack for use by the `SC`
+      // 來將暫存器中的變數位址推進堆疊, 供下面添加的 `SC` 指令使用
       // instruction added below.
       if (*e == LC) { *e = PSH; *++e = LC; }
       // If current instruction is `LI`, insert a `PSH` instruction before `LI`
+      // 如果當前指令是 `LI`, 在 `LI` 之前插入一個 `PSH` 指令
       // to push variable address in register to stack for use by the `SI`
+      // 來將暫存器中的變數位址推進堆疊, 供下面添加的 `SI` 指令使用
       // instruction added below.
       else if (*e == LI) { *e = PSH; *++e = LI; }
-      // Else print error and exit program.
+      // Else print error and exit program. // 否則印出錯誤並退出程序
       else { printf("%d: bad lvalue in post-increment\n", line); exit(-1); }
 
       // Add `PSH` instruction to push operand value in register to stack.
+      // 添加 `PSH` 指令來將暫存器中的運算元推進堆疊
       // Add `IMM` instruction to load increment/decrement size to register.
+      // 添加 `IMM` 指令來將遞增/遞減大小載入到暫存器中
       *++e = PSH; *++e = IMM; *++e = (ty > PTR) ? sizeof(int) : sizeof(char);
 
       // Add `ADD`/`SUB` instruction to compute the post value.
+      // 添加 `ADD`/`SUB` 指令來計算後置值
       *++e = (tk == Inc) ? ADD : SUB;
 
       // Add `SC`/`SI` instruction to save the post value in register to
-      // variable.
+      // variable. // 添加 `SC`/`SI` 指令來將暫存器中的後置值保存到變數中
       *++e = (ty == CHAR) ? SC : SI;
 
       // Add `PSH` instruction to push the post value in register to stack.
+      // 添加 `PSH` 指令來將暫存器中的後置值推進堆疊
       // Add `IMM` instruction to load increment/decrement size to register.
+      // 添加 `IMM` 指令來將遞增/遞減大小載入到暫存器中
       *++e = PSH; *++e = IMM; *++e = (ty > PTR) ? sizeof(int) : sizeof(char);
 
       // Add `SUB`/`ADD` instruction to compute the old value.
+      // 添加 `SUB`/`ADD` 指令來計算舊值
       // This implements postfix semantics.
+      // 這實現了後置語義
       *++e = (tk == Inc) ? SUB : ADD;
 
-      // Read token.
+      // Read token. // 讀取 token
       next();
     }
-    // If current token is `[`, it is array subscript.
+    // If current token is `[`, it is array subscript. // 如果當前 token 是左方括號, 則他是陣列索引
     else if (tk == Brak) {
-      // Read token.
+      // Read token. // 讀取 token
       // Add `PSH` instruction to push the base address in register to stack.
-      // Parse subscript expression.
+      // 添加 `PSH` 指令來將暫存器中的基底位址推進堆疊
+      // Parse subscript expression. // 解析索引表達式
       next(); *++e = PSH; expr(Assign);
 
-      // If current token is not `]`, print error and exit program.
+      // If current token is not `]`, print error and exit program. // 如果當前 token 不是右方括號, 印出錯誤並退出程序
       if (tk == ']') next(); else { printf("%d: close bracket expected\n", line); exit(-1); }
 
       // If base address's value type is int pointer or pointer to pointer,
+      // 如果基底位址的值型態是整數指標或雙重指標
       // the subscript value should be multiplied by int size to get address
+      // 則索引值應該乘以整數大小以獲得位址偏移量
       // offset. `t == PTR` is char pointer `char*`, which needs not doing so.
+      // `t == PTR` 是字元指標 `char*`, 不需要進行這樣的操作
       // Add `PSH` instruction to push subscript value in register to stack.
+      // 添加 `PSH` 指令來將暫存器中的索引值推進堆疊
       // Add `IMM` instruction to load int size to register.
+      // 添加 `IMM` 指令來將整數大小載入到暫存器
       // Add `MUL` instruction to compute address offset.
+      // 添加 `MUL` 指令來計算位址偏移量
       if (t > PTR) { *++e = PSH; *++e = IMM; *++e = sizeof(int); *++e = MUL;  }
       // If base address's value type is not pointer, print error and exit
-      // program.
+      // program. // 如果基底位址的值型態不是指標, 印出錯誤並退出程序
       else if (t < PTR) { printf("%d: pointer type expected\n", line); exit(-1); }
 
       // Add `ADD` instruction to add the address offset to the base address.
+      // 添加 `ADD` 指令來將位址偏移量加到基底位址上
       *++e = ADD;
 
       // Add `LC`/`LI` instruction to load the value on the address in register
-      // to register.
+      // to register. // 添加 `LC`/`LI` 指令來將暫存器中的位址所指向的值載入到暫存器
       *++e = ((ty = t - PTR) == CHAR) ? LC : LI;
     }
     // If current token is not a known operator, print error and exit program.
+    // 如果當前 token 不是已知運算符, 印出錯誤並退出程序
     else { printf("%d: compiler error tk=%d\n", line, tk); exit(-1); }
   }
 }
