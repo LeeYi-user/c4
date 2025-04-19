@@ -803,124 +803,118 @@ void expr(int lev)
   }
 }
 
-// Parse statement.
+// Parse statement. // 解析語句
 void stmt()
 {
   int *a, *b;
 
-  // If current token is `if`.
+  // If current token is `if`. // 如果當前 token 是 if
   if (tk == If) {
-    // Read token.
+    // Read token. // 讀取 token
     next();
 
-    // If current token is not `(`, print error and exit program.
+    // If current token is not `(`, print error and exit program. // 如果當前 token 不是 '(', 則印出錯誤並退出程式
     if (tk == '(') next(); else { printf("%d: open paren expected\n", line); exit(-1); }
 
-    // Parse test expression.
+    // Parse test expression. // 解析條件運算式
     expr(Assign);
 
-    // If current token is not `)`, print error and exit program.
+    // If current token is not `)`, print error and exit program. // 如果當前 token 不是 ')', 則印出錯誤並退出程式
     if (tk == ')') next(); else { printf("%d: close paren expected\n", line); exit(-1); }
 
-    // Add jump-if-zero instruction `BZ` to jump over the true branch.
-    // Point `b` to the jump address field to be patched later.
+    // Add jump-if-zero instruction `BZ` to jump over the true branch. // 添加條件跳轉指令 BZ 以跳過 true 區塊
+    // Point `b` to the jump address field to be patched later. // 將 b 指向待修補的跳轉位址欄位
     *++e = BZ; b = ++e;
 
-    // Parse true branch's statement.
+    // Parse true branch's statement. // 解析 true 區塊的語句
     stmt();
 
-    // If current token is `else`.
+    // If current token is `else`. // 如果當前 token 是 else
     if (tk == Else) {
-      // Patch the jump address field pointed to by `b` to hold the address of
-      // else branch.
-      // `e + 3` excludes the `JMP` instruction added below.
-      //
-      // Add `JMP` instruction after the true branch to jump over the else
-      // branch.
-      //
-      // Point `b` to the jump address field to be patched later.
+      // Patch the jump address field pointed to by `b` to hold the address of else branch. // 將 b 所指向的跳轉位址欄位修補為 else 區塊的起始位址
+      // `e + 3` excludes the `JMP` instruction added below. // e + 3 是因為還會再插入一個 JMP
+      // Add `JMP` instruction after the true branch to jump over the else branch. // 在 true 區塊後插入 JMP 以跳過 else 區塊
+      // Point `b` to the jump address field to be patched later. // b 指向新的跳轉位址欄位 (for else 區塊結束)
       *b = (int)(e + 3); *++e = JMP; b = ++e;
 
-      // Read token.
+      // Read token. // 讀取 token
       next();
 
-      // Parse else branch's statement.
+      // Parse else branch's statement. // 解析 else 區塊的語句
       stmt();
     }
 
-    // Patch the jump address field pointed to by `b` to hold the address past
-    // the if-else structure.
+    // Patch the jump address field pointed to by `b` to hold the address past the if-else structure. // 修補 b 所指向的跳轉位址為 if-else 區塊後的下一行指令
     *b = (int)(e + 1);
   }
-  // If current token is `while`.
+  // If current token is `while`. // 如果當前 token 是 while
   else if (tk == While) {
-    // Read token.
+    // Read token. // 讀取 token
     next();
 
-    // Point `a` to the loop's test expression's address.
+    // Point `a` to the loop's test expression's address. // a 指向 while 條件表達式的位置
     a = e + 1;
 
-    // If current token is not `(`, print error and exit program.
+    // If current token is not `(`, print error and exit program. // 如果 token 不是 '(', 印出錯誤並退出
     if (tk == '(') next(); else { printf("%d: open paren expected\n", line); exit(-1); }
 
-    // Parse test expression.
+    // Parse test expression. // 解析條件運算式
     expr(Assign);
 
-    // If current token is not `)`, print error and exit program.
+    // If current token is not `)`, print error and exit program. // 如果 token 不是 ')', 印出錯誤並退出
     if (tk == ')') next(); else { printf("%d: close paren expected\n", line); exit(-1); }
 
-    // Add jump-if-zero instruction `BZ` to jump over loop body.
-    // Point `b` to the jump address field to be patched later.
+    // Add jump-if-zero instruction `BZ` to jump over loop body. // 插入條件跳轉指令 BZ 來跳過 while 迴圈的主體
+    // Point `b` to the jump address field to be patched later. // b 為待修補的跳轉地址
     *++e = BZ; b = ++e;
 
-    // Parse loop body's statement.
+    // Parse loop body's statement. // 解析 while 主體
     stmt();
 
-    // Add `JMP` instruction to jump to test expression.
+    // Add `JMP` instruction to jump to test expression. // 插入 JMP 回到 while 條件開始處
     *++e = JMP; *++e = (int)a;
 
-    // Patch the jump address field pointed to by `b` to hold the address past
-    // the loop structure.
+    // Patch the jump address field pointed to by `b` to hold the address past the loop structure. // 修補 b 所指向的跳轉地址為 while 區塊之後的地址
     *b = (int)(e + 1);
   }
-  // If current token is `return`.
+  // If current token is `return`. // 如果當前 token 是 return
   else if (tk == Return) {
-    // Read token.
+    // Read token. // 讀取 token
     next();
 
-    // If current token is not `;`, it is return expression.
-    // Parse return expression.
+    // If current token is not `;`, it is return expression. // 如果不是分號，表示有傳回值
+    // Parse return expression. // 解析回傳值運算式
     if (tk != ';') expr(Assign);
 
-    // Add `LEV` instruction to leave the function.
+    // Add `LEV` instruction to leave the function. // 插入 LEV 指令表示離開函式 (return)
     *++e = LEV;
 
-    // If current token is `;`, read token, else print error and exit program.
+    // If current token is `;`, read token, else print error and exit program. // 確認後面是分號，否則印出錯誤
     if (tk == ';') next(); else { printf("%d: semicolon expected\n", line); exit(-1); }
   }
-  // If current token is `{`, it is block.
+  // If current token is `{`, it is block. // 如果當前 token 是 '{', 表示語句區塊 (複合語句)
   else if (tk == '{') {
-    // Read token.
+    // Read token. // 讀取 token
     next();
 
-    // While current token is not `}`.
-    // Parse statement.
+    // While current token is not `}`. // 直到遇到 '}' 為止
+    // Parse statement. // 逐個解析語句
     while (tk != '}') stmt();
 
-    // Read token.
+    // Read token. // 跳過 '}'
     next();
   }
-  // If current token is `;`, it is statement end.
+  // If current token is `;`, it is statement end. // 如果當前 token 是 ';'，代表空語句 (do nothing)
   else if (tk == ';') {
-    // Read token.
+    // Read token. // 讀取 token
     next();
   }
-  // If current token is none of above, assume it is expression.
+  // If current token is none of above, assume it is expression. // 否則視為運算式語句 (表達式 + 分號)
   else {
-    // Parse expression.
+    // Parse expression. // 解析運算式
     expr(Assign);
 
-    // If current token is `;`, read token, else print error and exit program.
+    // If current token is `;`, read token, else print error and exit program. // 後面必須接分號，否則印出錯誤
     if (tk == ';') next(); else { printf("%d: semicolon expected\n", line); exit(-1); }
   }
 }
