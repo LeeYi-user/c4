@@ -922,405 +922,405 @@ void stmt()
 int main(int argc, char **argv)
 {
   int fd, bt, ty, poolsz, *idmain;
-  int *pc, *sp, *bp, a, cycle; // vm registers
-  int i, *t; // temps
+  int *pc, *sp, *bp, a, cycle; // vm registers // 虛擬機暫存器
+  int i, *t; // temps // 暫存變數
 
-  // Decrement `argc` to get the number of command line arguments.
-  // Increment `argv` to point to the first command line argument.
+  // Decrement `argc` to get the number of command line arguments. // 遞減 `argc` 取得參數數量
+  // Increment `argv` to point to the first command line argument. // 遞增 `argv` 指向第一個參數
   --argc; ++argv;
 
-  // If command line argument `-s` is given,
-  // turn on switch for printing source code line and corresponding
-  // instructions.
+  // If command line argument `-s` is given, // 若指定 `-s` 參數
+  // turn on switch for printing source code line and corresponding // 開啟印出原始碼與對應指令的開關
+  // instructions. // 印出對應的虛擬機指令
   if (argc > 0 && **argv == '-' && (*argv)[1] == 's') { src = 1; --argc; ++argv; }
 
-  // If command line argument `-d` is given,
-  // turn on debug switch.
+  // If command line argument `-d` is given, // 若指定 `-d` 參數
+  // turn on debug switch. // 開啟除錯模式
   if (argc > 0 && **argv == '-' && (*argv)[1] == 'd') { debug = 1; --argc; ++argv; }
 
-  // If source code file path is not given, print program usage and exit
-  // program.
+  // If source code file path is not given, print program usage and exit // 若沒指定原始碼檔案，印出使用方式後結束
+  // program. // 結束程式
   if (argc < 1) { printf("usage: c4 [-s] [-d] file ...\n"); return -1; }
 
-  // Open source code file.
-  // If failed, print error and exit program.
+  // Open source code file. // 開啟原始碼檔案
+  // If failed, print error and exit program. // 若失敗則印出錯誤訊息並結束
   if ((fd = open(*argv, 0)) < 0) { printf("could not open(%s)\n", *argv); return -1; }
 
-  // Set buffer size.
-  poolsz = 256*1024; // arbitrary size
+  // Set buffer size. // 設定緩衝區大小
+  poolsz = 256*1024; // arbitrary size // 任意指定的大小
 
-  // Allocate symbol table.
-  // If failed, print error and exit program.
+  // Allocate symbol table. // 配置符號表
+  // If failed, print error and exit program. // 若失敗則印出錯誤訊息並結束
   if (!(sym = malloc(poolsz))) { printf("could not malloc(%d) symbol area\n", poolsz); return -1; }
 
-  // Allocate instruction buffer.
-  // If failed, print error and exit program.
+  // Allocate instruction buffer. // 配置指令區
+  // If failed, print error and exit program. // 若失敗則印出錯誤訊息並結束
   if (!(le = e = malloc(poolsz))) { printf("could not malloc(%d) text area\n", poolsz); return -1; }
 
-  // Allocate data buffer.
-  // If failed, print error and exit program.
+  // Allocate data buffer. // 配置資料區
+  // If failed, print error and exit program. // 若失敗則印出錯誤訊息並結束
   if (!(data = malloc(poolsz))) { printf("could not malloc(%d) data area\n", poolsz); return -1; }
 
-  // Allocate stack.
-  // If failed, print error and exit program.
+  // Allocate stack. // 配置堆疊區
+  // If failed, print error and exit program. // 若失敗則印出錯誤訊息並結束
   if (!(sp = malloc(poolsz))) { printf("could not malloc(%d) stack area\n", poolsz); return -1; }
 
-  // Clear the buffers.
+  // Clear the buffers. // 清空所有緩衝區
   memset(sym,  0, poolsz);
   memset(e,    0, poolsz);
   memset(data, 0, poolsz);
 
-  // Keywords and system call names.
+  // Keywords and system call names. // 關鍵字與系統呼叫名稱
   p = "char else enum if int return sizeof while "
       "open read close printf malloc free memset memcmp exit void main";
 
-  // For each keyword from `char` to `while`,
-  // call `next` to create symbol table entry,
-  // store the keyword's token type in the symbol table entry's `Tk` field.
-  i = Char; while (i <= While) { next(); id[Tk] = i++; } // add keywords to symbol table
+  // For each keyword from `char` to `while`, // 對每個關鍵字從 `char` 到 `while`
+  // call `next` to create symbol table entry, // 呼叫 `next` 建立符號表項目
+  // store the keyword's token type in the symbol table entry's `Tk` field. // 將 token 類型存入 `Tk` 欄位
+  i = Char; while (i <= While) { next(); id[Tk] = i++; } // add keywords to symbol table // 加入關鍵字至符號表
 
-  // For each system call name from `open` to `exit`,
-  // call `next` to create symbol table entry,
-  // set the symbol table entry's symbol type field be `Sys`,
-  // set the symbol table entry's associated value type field be the system
-  // call's return type,
-  // set the symbol table entry's associated value field be the system call's
-  // opcode.
-  i = OPEN; while (i <= EXIT) { next(); id[Class] = Sys; id[Type] = INT; id[Val] = i++; } // add library to symbol table
+  // For each system call name from `open` to `exit`, // 對每個系統呼叫從 `open` 到 `exit`
+  // call `next` to create symbol table entry, // 呼叫 `next` 建立符號表項目
+  // set the symbol table entry's symbol type field be `Sys`, // 將類型設為 `Sys`
+  // set the symbol table entry's associated value type field be the system // 將回傳型別設為整數
+  // call's return type, // 系統呼叫的回傳型態
+  // set the symbol table entry's associated value field be the system call's // 將系統呼叫的編號存入 `Val`
+  // opcode. // 系統呼叫的操作碼
+  i = OPEN; while (i <= EXIT) { next(); id[Class] = Sys; id[Type] = INT; id[Val] = i++; } // add library to symbol table // 加入標準函式庫至符號表
 
-  // Create symbol table entry for `void`.
-  next(); id[Tk] = Char; // handle void type
+  // Create symbol table entry for `void`. // 建立 `void` 的符號表項目
+  next(); id[Tk] = Char; // handle void type // 處理 void 類型
 
-  // Create symbol table entry for `main`.
-  // Point `idmain` to the symbol table entry.
-  next(); idmain = id; // keep track of main
+  // Create symbol table entry for `main`. // 建立 `main` 的符號表項目
+  // Point `idmain` to the symbol table entry. // 將 `idmain` 指向該項目
+  next(); idmain = id; // keep track of main // 記錄 main 的位置
 
-  // Allocate source code buffer.
-  // If failed, print error and exit program.
+  // Allocate source code buffer. // 配置原始碼區域
+  // If failed, print error and exit program. // 若失敗則印出錯誤訊息並結束
   if (!(lp = p = malloc(poolsz))) { printf("could not malloc(%d) source area\n", poolsz); return -1; }
 
-  // Read source code from source code file into source code buffer.
-  // If failed, print error and exit program.
+  // Read source code from source code file into source code buffer. // 讀入原始碼至緩衝區
+  // If failed, print error and exit program. // 若失敗則印出錯誤訊息並結束
   if ((i = read(fd, p, poolsz-1)) <= 0) { printf("read() returned %d\n", i); return -1; }
 
-  // Add end maker `\0` after the source code in source code buffer.
+  // Add end maker `\0` after the source code in source code buffer. // 在最後補上字串結尾符號 '\0'
   p[i] = 0;
 
-  // Close source code file.
+  // Close source code file. // 關閉原始碼檔案
   close(fd);
 
-  // parse declarations
+  // parse declarations // 解析宣告
   line = 1;
 
-  // Read token.
+  // Read token. // 讀取 token
   next();
 
-  // While current token is not input end.
+  // While current token is not input end. // 當 token 不是檔案結尾
   while (tk) {
-    // Set result value type.
-    bt = INT; // basetype
+    // Set result value type. // 設定基本型別
+    bt = INT; // basetype // 預設為 int
 
-    // If current token is `int`, read token.
+    // If current token is `int`, read token. // 若為 int 則讀取下一個 token
     if (tk == Int) next();
-    // If current token is `char`, read token, set result value type be `CHAR`.
+    // If current token is `char`, read token, set result value type be `CHAR`. // 若為 char 則設為 CHAR
     else if (tk == Char) { next(); bt = CHAR; }
-    // If current token is `enum`, it is enum definition.
+    // If current token is `enum`, it is enum definition. // 若為 enum 則處理列舉定義
     else if (tk == Enum) {
-      // Read token.
+      // Read token. // 讀取下一個 token
       next();
 
-      // If current token is not `{`, it means having enum type name.
-      // Skip the enum type name.
+      // If current token is not `{`, it means having enum type name. // 若非 `{` 表示 enum 有名字
+      // Skip the enum type name. // 跳過 enum 名稱
       if (tk != '{') next();
 
-      // If current token is `{`.
+      // If current token is `{`. // 如果是 `{`
       if (tk == '{') {
-        // Read token.
+        // Read token. // 讀取下一個 token
         next();
 
-        // Enum value starts from 0.
+        // Enum value starts from 0. // 列舉值從 0 開始
         i = 0;
 
-        // While current token is not `}`
+        // While current token is not `}` // 當不是 `}`
         while (tk != '}') {
-          // Current token should be enum name.
-          // If current token is not identifier, print error and exit program.
+          // Current token should be enum name. // token 應該是列舉名稱
+          // If current token is not identifier, print error and exit program. // 若不是名稱則錯誤
           if (tk != Id) { printf("%d: bad enum identifier %d\n", line, tk); return -1; }
 
-          // Read token.
+          // Read token. // 讀取下一個 token
           next();
 
-          // If current token is assignment operator.
+          // If current token is assignment operator. // 若有指定數值
           if (tk == Assign) {
-            // Read token.
+            // Read token. // 讀取下一個 token
             next();
 
-            // If current token is not number constant, print error and exit
+            // If current token is not number constant, print error and exit // 若非數字常數則錯誤
             // program.
             if (tk != Num) { printf("%d: bad enum initializer\n", line); return -1; }
 
-            // Set enum value.
+            // Set enum value. // 設定 enum 值
             i = ival;
 
-            // Read token.
+            // Read token. // 讀取下一個 token
             next();
           }
 
-          // `id` is pointing to the enum name's symbol table entry.
-          // Set the symbol table entry's symbol type be `Num`.
-          // Set the symbol table entry's associated value type be `INT`.
-          // Set the symbol table entry's associated value be the enum value.
+          // `id` is pointing to the enum name's symbol table entry. // `id` 指向 enum 名稱的符號表
+          // Set the symbol table entry's symbol type be `Num`. // 類型設為 Num
+          // Set the symbol table entry's associated value type be `INT`. // 設為整數型別
+          // Set the symbol table entry's associated value be the enum value. // 設為對應的數值
           id[Class] = Num; id[Type] = INT; id[Val] = i++;
 
-          // If current token is `,`, skip.
+          // If current token is `,`, skip. // 若為逗號，跳過
           if (tk == ',') next();
         }
 
-        // Skip `}`.
+        // Skip `}`. // 跳過 `}`
         next();
       }
     }
 
-    // While current token is not statement end or block end.
+    // While current token is not statement end or block end. // 當前 token 不是語句結尾或區塊結尾時
     while (tk != ';' && tk != '}') {
-      // Set value type.
+      // Set value type. // 設定變數型態
       ty = bt;
 
-      // While current token is `*`, it is pointer type.
-      // Read token.
-      // Add `PTR` to the value type.
+      // While current token is `*`, it is pointer type. // 當前 token 是 `*` 表示指標型態
+      // Read token. // 讀取下一個 token
+      // Add `PTR` to the value type. // 將 PTR 加到變數型態上
       while (tk == Mul) { next(); ty = ty + PTR; }
 
-      // Current token should be variable name or function name.
-      // If current token is not identifier, print error and exit program.
+      // Current token should be variable name or function name. // 接下來的 token 應該是變數或函數名稱
+      // If current token is not identifier, print error and exit program. // 如果不是識別子，印出錯誤並結束
       if (tk != Id) { printf("%d: bad global declaration\n", line); return -1; }
 
-      // If the name has been defined before, print error and exit program.
+      // If the name has been defined before, print error and exit program. // 如果這個名稱已經定義過，印出錯誤並結束
       if (id[Class]) { printf("%d: duplicate global definition\n", line); return -1; }
 
-      // Read token.
+      // Read token. // 讀取下一個 token
       next();
 
-      // Store the variable's data type or the function's return type.
+      // Store the variable's data type or the function's return type. // 儲存變數或函數的資料型態
       id[Type] = ty;
 
-      // If current token is `(`, it is function definition.
-      if (tk == '(') { // function
-        // Store symbol type.
+      // If current token is `(`, it is function definition. // 如果下一個 token 是 `(`，則是函數定義
+      if (tk == '(') { // function // 函數
+        // Store symbol type. // 設定符號類型為函數
         id[Class] = Fun;
 
-        // Store function address.
-        // `+ 1` is because the code to add instruction always uses `++e`.
+        // Store function address. // 儲存函數地址
+        // `+ 1` is because the code to add instruction always uses `++e`. // `+1` 是因為指令加入時使用 `++e`
         id[Val] = (int)(e + 1);
 
-        // Read token.
-        // `i` is parameter's index.
+        // Read token. // 讀取下一個 token
+        // `i` is parameter's index. // `i` 是參數索引
         next(); i = 0;
 
-        // Parse parameters list.
-        // While current token is not `)`.
+        // Parse parameters list. // 解析參數列表
+        // While current token is not `)`. // 當前 token 不是 `)` 時
         while (tk != ')') {
-          // Set current parameter's data type.
+          // Set current parameter's data type. // 預設參數型態為 INT
           ty = INT;
 
-          // If current parameter's data type is `int`, read token.
+          // If current parameter's data type is `int`, read token. // 如果是 int，讀取下一個 token
           if (tk == Int) next();
-          // If current parameter's data type is `char`, read token, set
-          // data type be `CHAR`.
+          // If current parameter's data type is `char`, read token, set // 如果是 char，讀取並設定為 CHAR
+          // data type be `CHAR`. // 設定參數型態為 CHAR
           else if (tk == Char) { next(); ty = CHAR; }
 
-          // While current token is `*`, it is pointer type.
-          // Add `PTR` to the data type.
+          // While current token is `*`, it is pointer type. // 如果是 `*` 表示指標型態
+          // Add `PTR` to the data type. // 加上 PTR
           while (tk == Mul) { next(); ty = ty + PTR; }
 
-          // Current token should be parameter name.
-          // If current token is not identifier, print error and exit program.
+          // Current token should be parameter name. // 接下來應為參數名稱
+          // If current token is not identifier, print error and exit program. // 否則印出錯誤
           if (tk != Id) { printf("%d: bad parameter declaration\n", line); return -1; }
 
-          // If the parameter name has been defined before as parameter, print
-          // error and exit program.
+          // If the parameter name has been defined before as parameter, print // 如果該名稱已定義為參數，印出錯誤
+          // error and exit program. // 結束程式
           if (id[Class] == Loc) { printf("%d: duplicate parameter definition\n", line); return -1; }
 
-          // Back up the symbol's `Class`, `Type`, `Val` fields because they
-          // will be used temporarily for the parameter name.
-          // Set the symbol type be local variable.
-          // Set the associated value type be the parameter's data type.
-          // Store the parameter's index.
+          // Back up the symbol's `Class`, `Type`, `Val` fields because they // 備份符號欄位
+          // will be used temporarily for the parameter name. // 這些欄位會暫時使用
+          // Set the symbol type be local variable. // 設為區域變數
+          // Set the associated value type be the parameter's data type. // 設定參數型態
+          // Store the parameter's index. // 儲存參數索引
           id[HClass] = id[Class]; id[Class] = Loc;
           id[HType]  = id[Type];  id[Type] = ty;
           id[HVal]   = id[Val];   id[Val] = i++;
 
-          // Read token.
+          // Read token. // 讀取下一個 token
           next();
 
-          // If current token is `,`, skip.
+          // If current token is `,`, skip. // 如果是逗號，繼續處理下一個參數
           if (tk == ',') next();
         }
 
-        // Read token.
+        // Read token. // 讀取 `)`
         next();
 
-        // If current token is not function body's `{`, print error and exit
-        // program.
+        // If current token is not function body's `{`, print error and exit // 如果不是 `{`，印出錯誤
+        // program. // 結束程式
         if (tk != '{') { printf("%d: bad function definition\n", line); return -1; }
 
-        // Local variable offset.
+        // Local variable offset. // 區域變數偏移量初始設定
         loc = ++i;
 
-        // Read token.
+        // Read token. // 讀取 `{`
         next();
 
-        // While current token is `int` or `char`, it is variable definition.
+        // While current token is `int` or `char`, it is variable definition. // 如果是 int 或 char，表示變數定義
         while (tk == Int || tk == Char) {
-          // Set base data type.
+          // Set base data type. // 設定基本型態
           bt = (tk == Int) ? INT : CHAR;
 
-          // Read token.
+          // Read token. // 讀取下一個 token
           next();
 
-          // While statement end is not met.
+          // While statement end is not met. // 直到遇到 `;` 為止
           while (tk != ';') {
-            // Set base data type.
+            // Set base data type. // 設定變數型態
             ty = bt;
 
-            // While current token is `*`, it is pointer type.
-            // Add `PTR` to the data type.
+            // While current token is `*`, it is pointer type. // 如果是 `*` 表示指標型態
+            // Add `PTR` to the data type. // 加上 PTR
             while (tk == Mul) { next(); ty = ty + PTR; }
 
-            // Current token should be local variable name.
-            // If current token is not identifier, print error and exit
-            // program.
+            // Current token should be local variable name. // 接下來應該是變數名稱
+            // If current token is not identifier, print error and exit // 如果不是識別子，印出錯誤
+            // program. // 結束程式
             if (tk != Id) { printf("%d: bad local declaration\n", line); return -1; }
 
-            // If the local variable name has been defined before as local
-            // variable, print error and exit program.
+            // If the local variable name has been defined before as local // 如果此名稱已定義過，印出錯誤
+            // variable, print error and exit program. // 結束程式
             if (id[Class] == Loc) { printf("%d: duplicate local definition\n", line); return -1; }
 
-            // Back up the symbol's `Class`, `Type`, `Val` fields because they
-            // will be used temporarily for the local variable name.
-            // Set the symbol type be local variable.
-            // Set the associated value type be the local variable's data type.
-            // Store the local variable's index.
+            // Back up the symbol's `Class`, `Type`, `Val` fields because they // 備份原本的欄位值
+            // will be used temporarily for the local variable name. // 這些欄位會被暫時覆寫
+            // Set the symbol type be local variable. // 設為區域變數
+            // Set the associated value type be the local variable's data type. // 設定型態
+            // Store the local variable's index. // 儲存變數偏移位置
             id[HClass] = id[Class]; id[Class] = Loc;
             id[HType]  = id[Type];  id[Type] = ty;
             id[HVal]   = id[Val];   id[Val] = ++i;
 
-            // Read token.
+            // Read token. // 讀取下一個 token
             next();
 
-            // If current token is `,`, skip.
+            // If current token is `,`, skip. // 如果是逗號，繼續處理下一個變數
             if (tk == ',') next();
           }
 
-          // Read token.
+          // Read token. // 讀取 `;`
           next();
         }
 
-        // Add `ENT` instruction before function body.
-        // Add local variables count as operand.
+        // Add `ENT` instruction before function body. // 在函數主體前插入 `ENT` 指令
+        // Add local variables count as operand. // 並插入區域變數數量
         *++e = ENT; *++e = i - loc;
 
-        // While current token is not function body's ending `}`,
-        // parse statement.
+        // While current token is not function body's ending `}`, // 當不是 `}` 時
+        // parse statement. // 解析語句
         while (tk != '}') stmt();
 
-        // Add `LEV` instruction after function body.
+        // Add `LEV` instruction after function body. // 在函數結尾插入 `LEV` 指令
         *++e = LEV;
 
-        // Point `id` to symbol table.
-        id = sym; // unwind symbol table locals
+        // Point `id` to symbol table. // 回到符號表的起始
+        id = sym; // unwind symbol table locals // 還原符號表
 
-        // While current symbol table entry is in use.
+        // While current symbol table entry is in use. // 當前條目仍在使用中
         while (id[Tk]) {
           // If the symbol table entry is for function parameter or local
-          // variable.
+          // variable. // 如果是參數或區域變數
           if (id[Class] == Loc) {
-            // Restore `Class`, `Type` and `Val` fields' old value.
+            // Restore `Class`, `Type` and `Val` fields' old value. // 還原原本的欄位值
             id[Class] = id[HClass];
             id[Type] = id[HType];
             id[Val] = id[HVal];
           }
 
-          // Point to next symbol table entry.
+          // Point to next symbol table entry. // 移動到下一個條目
           id = id + Idsz;
         }
       }
-      // If current token is not `(`, then it is not function definition,
-      // assume it is global variable definition.
+      // If current token is not `(`, then it is not function definition, // 如果不是函數定義
+      // assume it is global variable definition. // 則是全域變數
       else {
-        // Set symbol type.
+        // Set symbol type. // 設定為全域變數
         id[Class] = Glo;
 
-        // Store the global variable's address.
+        // Store the global variable's address. // 儲存變數地址
         id[Val] = (int)data;
 
-        // Point to next global variable.
+        // Point to next global variable. // 指向下一個變數位置
         data = data + sizeof(int);
       }
 
-      // If current token is `,`, skip.
+      // If current token is `,`, skip. // 如果是逗號，處理下一個變數
       if (tk == ',') next();
     }
 
-    // Read token.
+    // Read token. // 最後讀取分號或右大括號
     next();
   }
 
-  // Point instruction pointer `pc` to `main` function's address.
+  // Point instruction pointer `pc` to `main` function's address. // 將指令指標 `pc` 指向 `main` 函數的位址
   // If symbol `main`'s `Val` field is not set, it means `main` function is
-  // not defined, print error and exit program.
+  // not defined, print error and exit program. // 如果 `main` 函數的 `Val` 欄位尚未設置，表示沒有定義 `main` 函數，印出錯誤訊息並退出
   if (!(pc = (int *)idmain[Val])) { printf("main() not defined\n"); return -1; }
 
   // If switch for printing source code line and corresponding instructions is
-  // on, exit program.
+  // on, exit program. // 如果有開啟印出原始碼及對應指令的選項，則退出程式
   if (src) return 0;
 
-  // setup stack
-  // Point frame base pointer `bp` and stack top pointer `sp` to stack bottom.
+  // setup stack // 設定堆疊
+  // Point frame base pointer `bp` and stack top pointer `sp` to stack bottom. // 將基底指標 `bp` 和堆疊頂端 `sp` 指向堆疊底部
   bp = sp = (int *)((int)sp + poolsz);
 
-  // Push `EXIT` instruction to stack.
+  // Push `EXIT` instruction to stack. // 將 `EXIT` 指令壓入堆疊
   // Note the stack grows towards lower address so after the `PSH` instruction
   // added below is executed, this `EXIT` instruction will be executed to exit
-  // the program.
-  *--sp = EXIT; // call exit if main returns
+  // the program. // 注意堆疊是向低位址成長，所以當 `PSH` 指令執行完後，這個 `EXIT` 會被執行以結束程式
+  *--sp = EXIT; // call exit if main returns // 如果 main 返回則執行 exit
 
   // Push `PSH` instruction to stack to push exit code in register to stack
   // after `main` function returns. The exit code on stack will be used by the
-  // `EXIT` instruction added above.
-  // Point `t` to the `PSH` instruction's address.
+  // `EXIT` instruction added above. // 將 `PSH` 指令壓入堆疊，在 `main` 返回後推入退出碼，此值會被上面的 `EXIT` 取用
+  // Point `t` to the `PSH` instruction's address. // `t` 指向 `PSH` 指令的位址
   *--sp = PSH; t = sp;
 
-  // Push `main` function's first argument `argc` to stack.
+  // Push `main` function's first argument `argc` to stack. // 將 `main` 的第一個參數 `argc` 壓入堆疊
   *--sp = argc;
 
-  // Push `main` function's second argument `argv` to stack.
+  // Push `main` function's second argument `argv` to stack. // 將 `main` 的第二個參數 `argv` 壓入堆疊
   *--sp = (int)argv;
 
   // Push the `PSH` instruction's address to stack so that `main` function
-  // will return to the `PSH` instruction.
+  // will return to the `PSH` instruction. // 將 `PSH` 的位址壓入堆疊，使 `main` 函數能返回此處繼續執行
   *--sp = (int)t;
 
-  // run...
-  // Instruction cycles count.
+  // run... // 開始執行虛擬機器指令
+  // Instruction cycles count. // 指令執行的週期計數
   cycle = 0;
-  // Run VM loop to execute VM instructions.
+  // Run VM loop to execute VM instructions. // 執行虛擬機器迴圈以執行指令
   while (1) {
-    // Get current instruction.
-    // Increment instruction pointer.
-    // Increment instruction cycles count.
+    // Get current instruction. // 取得當前指令
+    // Increment instruction pointer. // 將指令指標往後移動
+    // Increment instruction cycles count. // 增加執行週期計數
     i = *pc++; ++cycle;
 
-    // If debug switch is on.
+    // If debug switch is on. // 如果開啟除錯模式
     if (debug) {
-      // Print opcode.
+      // Print opcode. // 印出操作碼
       printf("%d> %.4s", cycle,
         &"LEA ,IMM ,JMP ,JSR ,BZ  ,BNZ ,ENT ,ADJ ,LEV ,LI  ,LC  ,SI  ,SC  ,PSH ,"
          "OR  ,XOR ,AND ,EQ  ,NE  ,LT  ,GT  ,LE  ,GE  ,SHL ,SHR ,ADD ,SUB ,MUL ,DIV ,MOD ,"
          "OPEN,READ,CLOS,PRTF,MALC,FREE,MSET,MCMP,EXIT,"[i * 5]);
 
-      // If the opcode <= ADJ, it has operand.
-      // Print operand.
+      // If the opcode <= ADJ, it has operand. // 如果操作碼小於等於 ADJ，表示它有運算元
+      // Print operand. // 印出運算元
       if (i <= ADJ) printf(" %d\n", *pc); else printf("\n");
     }
 
