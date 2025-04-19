@@ -1325,109 +1325,109 @@ int main(int argc, char **argv)
     }
 
     // Add the base address in frame base pointer `bp` to the offset in the
-    // operand.
-    if      (i == LEA) a = (int)(bp + *pc++);                             // load local address
-    // Load the operand to register.
-    else if (i == IMM) a = *pc++;                                         // load global address or immediate
-    // Jump to the address in the operand.
-    else if (i == JMP) pc = (int *)*pc;                                   // jump
-    // Push the return address in the second operand to stack.
-    // Jump to the address in the first operand.
-    else if (i == JSR) { *--sp = (int)(pc + 1); pc = (int *)*pc; }        // jump to subroutine
-    // Jump to the address in the first operand if register value is 0.
-    else if (i == BZ)  pc = a ? pc + 1 : (int *)*pc;                      // branch if zero
-    // Jump to the address in the first operand if register value is not 0.
-    else if (i == BNZ) pc = a ? (int *)*pc : pc + 1;                      // branch if not zero
-    // Push the caller's frame base address in `bp` to stack.
-    // Point `bp` to stack top for the callee.
-    // Decrease stack top pointer `sp` by the value in the operand to reserve
-    // space for the callee's local variables.
-    else if (i == ENT) { *--sp = (int)bp; bp = sp; sp = sp - *pc++; }     // enter subroutine
-    // Pop arguments off stack after returning from function call.
-    else if (i == ADJ) sp = sp + *pc++;                                   // stack adjust
-    // Point stack top pointer `sp` to caller's stack top before the call.
-    // Pop caller's frame base address off stack into `bp`.
-    // The old value was pushed to stack by `ENT` instruction.
-    else if (i == LEV) { sp = bp; bp = (int *)*sp++; pc = (int *)*sp++; } // leave subroutine
-    // Load int value on the address in register to register.
-    else if (i == LI)  a = *(int *)a;                                     // load int
-    // Load char value on the address in register to register.
-    else if (i == LC)  a = *(char *)a;                                    // load char
-    // Save int value in register to address on stack.
-    else if (i == SI)  *(int *)*sp++ = a;                                 // store int
-    // Save char value in register to address on stack.
-    else if (i == SC)  a = *(char *)*sp++ = a;                            // store char
-    // Push register value to stack.
-    else if (i == PSH) *--sp = a;                                         // push
+    // operand. // 將基底指標 `bp` 加上運算元中的偏移量
+    if      (i == LEA) a = (int)(bp + *pc++);                             // load local address // 載入區域變數位址
+    // Load the operand to register. // 將運算元載入到暫存器
+    else if (i == IMM) a = *pc++;                                         // load global address or immediate // 載入全域變數位址或立即值
+    // Jump to the address in the operand. // 跳到運算元中的位址
+    else if (i == JMP) pc = (int *)*pc;                                   // jump // 無條件跳躍
+    // Push the return address in the second operand to stack. // 將返回位址推入堆疊
+    // Jump to the address in the first operand. // 跳到第一個運算元位址
+    else if (i == JSR) { *--sp = (int)(pc + 1); pc = (int *)*pc; }        // jump to subroutine // 呼叫子程式
+    // Jump to the address in the first operand if register value is 0. // 如果暫存器值為 0 則跳躍
+    else if (i == BZ)  pc = a ? pc + 1 : (int *)*pc;                      // branch if zero // 為零則跳
+    // Jump to the address in the first operand if register value is not 0. // 如果暫存器值不為 0 則跳躍
+    else if (i == BNZ) pc = a ? (int *)*pc : pc + 1;                      // branch if not zero // 不為零則跳
+    // Push the caller's frame base address in `bp` to stack. // 將目前函數的基底指標 `bp` 推入堆疊
+    // Point `bp` to stack top for the callee. // 設定新函數的基底指標為目前堆疊頂
+    // Decrease stack top pointer `sp` by the value in the operand to reserve // 將堆疊頂 `sp` 減去運算元值以保留區域變數空間
+    // space for the callee's local variables. // 為子函數的區域變數保留空間
+    else if (i == ENT) { *--sp = (int)bp; bp = sp; sp = sp - *pc++; }     // enter subroutine // 進入子程式
+    // Pop arguments off stack after returning from function call. // 函數呼叫返回後從堆疊中移除參數
+    else if (i == ADJ) sp = sp + *pc++;                                   // stack adjust // 調整堆疊
+    // Point stack top pointer `sp` to caller's stack top before the call. // 將堆疊頂回復為呼叫者狀態
+    // Pop caller's frame base address off stack into `bp`. // 從堆疊取出呼叫者的 `bp`
+    // The old value was pushed to stack by `ENT` instruction. // 這是由 `ENT` 指令儲存的
+    else if (i == LEV) { sp = bp; bp = (int *)*sp++; pc = (int *)*sp++; } // leave subroutine // 離開子程式
+    // Load int value on the address in register to register. // 將暫存器中位址對應的 int 值載入
+    else if (i == LI)  a = *(int *)a;                                     // load int // 載入整數
+    // Load char value on the address in register to register. // 將暫存器中位址對應的 char 值載入
+    else if (i == LC)  a = *(char *)a;                                    // load char // 載入字元
+    // Save int value in register to address on stack. // 將暫存器中的整數存入堆疊位址
+    else if (i == SI)  *(int *)*sp++ = a;                                 // store int // 儲存整數
+    // Save char value in register to address on stack. // 將暫存器中的字元存入堆疊位址
+    else if (i == SC)  a = *(char *)*sp++ = a;                            // store char // 儲存字元
+    // Push register value to stack. // 將暫存器值推入堆疊
+    else if (i == PSH) *--sp = a;                                         // push // 推入堆疊
 
-    // The following instructions take two arguments.
-    // The first argument is on stack.
-    // The second argument is in register.
-    // The result is put to register.
-    else if (i == OR)  a = *sp++ |  a;
-    else if (i == XOR) a = *sp++ ^  a;
-    else if (i == AND) a = *sp++ &  a;
-    else if (i == EQ)  a = *sp++ == a;
-    else if (i == NE)  a = *sp++ != a;
-    else if (i == LT)  a = *sp++ <  a;
-    else if (i == GT)  a = *sp++ >  a;
-    else if (i == LE)  a = *sp++ <= a;
-    else if (i == GE)  a = *sp++ >= a;
-    else if (i == SHL) a = *sp++ << a;
-    else if (i == SHR) a = *sp++ >> a;
-    else if (i == ADD) a = *sp++ +  a;
-    else if (i == SUB) a = *sp++ -  a;
-    else if (i == MUL) a = *sp++ *  a;
-    else if (i == DIV) a = *sp++ /  a;
-    else if (i == MOD) a = *sp++ %  a;
+    // The following instructions take two arguments. // 以下指令需要兩個參數
+    // The first argument is on stack. // 第一個參數在堆疊中
+    // The second argument is in register. // 第二個參數在暫存器中
+    // The result is put to register. // 結果寫入暫存器
+    else if (i == OR)  a = *sp++ |  a; // OR // 位元或
+    else if (i == XOR) a = *sp++ ^  a; // XOR // 位元異或
+    else if (i == AND) a = *sp++ &  a; // AND // 位元與
+    else if (i == EQ)  a = *sp++ == a; // EQ // 等於
+    else if (i == NE)  a = *sp++ != a; // NE // 不等於
+    else if (i == LT)  a = *sp++ <  a; // LT // 小於
+    else if (i == GT)  a = *sp++ >  a; // GT // 大於
+    else if (i == LE)  a = *sp++ <= a; // LE // 小於等於
+    else if (i == GE)  a = *sp++ >= a; // GE // 大於等於
+    else if (i == SHL) a = *sp++ << a; // SHL // 左移
+    else if (i == SHR) a = *sp++ >> a; // SHR // 右移
+    else if (i == ADD) a = *sp++ +  a; // ADD // 加法
+    else if (i == SUB) a = *sp++ -  a; // SUB // 減法
+    else if (i == MUL) a = *sp++ *  a; // MUL // 乘法
+    else if (i == DIV) a = *sp++ /  a; // DIV // 除法
+    else if (i == MOD) a = *sp++ %  a; // MOD // 取餘數
 
-    // The following instructions are system calls.
-    // They take arguments from stack, just like a user-defined function does.
-    // Note the stack grows towards lower address, arguments pushed earlier are
-    // at higher address. E.g. if there are three arguments on stack, then:
-    // `sp[2]` is the first argument.
-    // `sp[1]` is the second argument.
-    // `*sp` is the third argument.
+    // The following instructions are system calls. // 以下是系統呼叫指令
+    // They take arguments from stack, just like a user-defined function does. // 他們從堆疊中取得參數，就像使用者自定函數一樣
+    // Note the stack grows towards lower address, arguments pushed earlier are // 注意堆疊向下成長，先推入的參數在高位址
+    // at higher address. E.g. if there are three arguments on stack, then: // 例如有三個參數時：
+    // `sp[2]` is the first argument. // 第一個參數是 sp[2]
+    // `sp[1]` is the second argument. // 第二個參數是 sp[1]
+    // `*sp` is the third argument. // 第三個參數是 *sp
     //
-    // Open file.
-    // Arg 1: The file path to open.
-    // Arg 2: The flags.
+    // Open file. // 開啟檔案
+    // Arg 1: The file path to open. // 參數 1：檔案路徑
+    // Arg 2: The flags. // 參數 2：開啟模式
     else if (i == OPEN) a = open((char *)sp[1], *sp);
-    // Read from file descriptor into buffer.
-    // Arg 1: The file descriptor.
-    // Arg 2: The buffer pointer.
-    // Arg 3: The number of bytes to read.
+    // Read from file descriptor into buffer. // 從檔案描述符讀取資料到緩衝區
+    // Arg 1: The file descriptor. // 參數 1：檔案描述符
+    // Arg 2: The buffer pointer. // 參數 2：緩衝區指標
+    // Arg 3: The number of bytes to read. // 參數 3：要讀取的位元組數
     else if (i == READ) a = read(sp[2], (char *)sp[1], *sp);
-    // Close file descriptor.
-    // Arg 1: The file descriptor.
+    // Close file descriptor. // 關閉檔案
+    // Arg 1: The file descriptor. // 參數 1：檔案描述符
     else if (i == CLOS) a = close(*sp);
-    // Print formatted string.
+    // Print formatted string. // 印出格式化字串
     // Because the call has arguments, an ADJ instruction should have been
     // added. `pc[1]` gets the ADJ instruction's operand, i.e. the number of
-    // arguments.
-    // Arg 1: The format string.
-    // Arg 2-7: The formatted values.
+    // arguments. // 因為該呼叫有參數，所以前面應有 ADJ 指令，`pc[1]` 是該 ADJ 的參數數量
+    // Arg 1: The format string. // 參數 1：格式字串
+    // Arg 2-7: The formatted values. // 參數 2-7：對應格式字串的值
     else if (i == PRTF) { t = sp + pc[1]; a = printf((char *)t[-1], t[-2], t[-3], t[-4], t[-5], t[-6]); }
-    // Allocate memory block.
-    // Arg 1: The number of bytes to allocate.
+    // Allocate memory block. // 配置記憶體區塊
+    // Arg 1: The number of bytes to allocate. // 參數 1：要配置的位元組數
     else if (i == MALC) a = (int)malloc(*sp);
-    // Free memory block allocated.
-    // Arg 1: The memory block pointer.
+    // Free memory block allocated. // 釋放記憶體區塊
+    // Arg 1: The memory block pointer. // 參數 1：記憶體區塊的指標
     else if (i == FREE) free((void *)*sp);
-    // Set every byte in a memory buffer to the same value.
-    // Arg 1: The buffer pointer.
-    // Arg 2: The value.
-    // Arg 3: The number of bytes to set.
+    // Set every byte in a memory buffer to the same value. // 將記憶體中的每個位元組設為同一數值
+    // Arg 1: The buffer pointer. // 參數 1：緩衝區位址
+    // Arg 2: The value. // 參數 2：欲填入的值
+    // Arg 3: The number of bytes to set. // 參數 3：欲設定的位元組數
     else if (i == MSET) a = (int)memset((char *)sp[2], sp[1], *sp);
-    // Compare memory buffer.
-    // Arg 1: The first buffer pointer.
-    // Arg 2: The second buffer pointer.
-    // Arg 3: The number of bytes to compare.
+    // Compare memory buffer. // 比較兩段記憶體內容
+    // Arg 1: The first buffer pointer. // 參數 1：第一段記憶體
+    // Arg 2: The second buffer pointer. // 參數 2：第二段記憶體
+    // Arg 3: The number of bytes to compare. // 參數 3：比較的位元組數
     else if (i == MCMP) a = memcmp((char *)sp[2], (char *)sp[1], *sp);
-    // Exit program.
-    // Arg 1: The exit code.
+    // Exit program. // 結束程式
+    // Arg 1: The exit code. // 參數 1：離開代碼
     else if (i == EXIT) { printf("exit(%d) cycle = %d\n", *sp, cycle); return *sp; }
-    // Current instruction is unknown, print error and exit program.
+    // Current instruction is unknown, print error and exit program. // 不明指令，印出錯誤並結束
     else { printf("unknown instruction = %d! cycle = %d\n", i, cycle); return -1; }
   }
 }
